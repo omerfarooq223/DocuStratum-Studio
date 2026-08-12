@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Block",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "content",
+    "headingPath",
+    "sourceAnchor",
+    "contentHash",
+    "included"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique block ID (blk_...)"
+    },
+    "type": {
+      "type": "string",
+      "enum": ["heading", "paragraph", "list", "code", "table", "callout"],
+      "description": "Semantic type of block"
+    },
+    "content": {
+      "type": "string",
+      "description": "Extracted text or markdown content of block"
+    },
+    "headingPath": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Hierarchy of parent headings leading to this block"
+    },
+    "sourceAnchor": {
+      "type": "object",
+      "required": ["cssSelector", "textQuote"],
+      "properties": {
+        "cssSelector": { "type": "string" },
+        "textQuote": { "type": "string" },
+        "nodePath": { "type": "string" }
+      },
+      "description": "Anchor information for source highlighting"
+    },
+    "contentHash": {
+      "type": "string",
+      "description": "SHA-256 content hash"
+    },
+    "included": {
+      "type": "boolean",
+      "description": "Whether block is included in downstream chunking/embedding"
+    }
+  }
+}

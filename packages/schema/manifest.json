@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Manifest",
+  "type": "object",
+  "required": [
+    "formatVersion",
+    "createdAt",
+    "sourceUrl",
+    "captureHash",
+    "embeddingModel",
+    "files"
+  ],
+  "properties": {
+    "formatVersion": { "type": "string" },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "sourceUrl": { "type": "string" },
+    "captureHash": { "type": "string" },
+    "extractorVersion": { "type": "string" },
+    "embeddingModel": {
+      "type": "object",
+      "required": ["name", "dimension"],
+      "properties": {
+        "name": { "type": "string" },
+        "dimension": { "type": "integer" }
+      }
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "sha256"],
+        "properties": {
+          "path": { "type": "string" },
+          "sha256": { "type": "string" }
+        }
+      }
+    }
+  }
+}

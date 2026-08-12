@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RetrievalResult",
+  "type": "object",
+  "required": [
+    "chunkId",
+    "score",
+    "rank",
+    "strategy",
+    "headingPath",
+    "excerpt"
+  ],
+  "properties": {
+    "chunkId": { "type": "string" },
+    "score": { "type": "number", "minimum": -1.0, "maximum": 1.0 },
+    "rank": { "type": "integer", "minimum": 1 },
+    "strategy": { "type": "string" },
+    "headingPath": { "type": "array", "items": { "type": "string" } },
+    "excerpt": { "type": "string" },
+    "sourceBlockIds": { "type": "array", "items": { "type": "string" } }
+  }
+}

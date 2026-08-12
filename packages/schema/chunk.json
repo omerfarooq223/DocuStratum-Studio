@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Chunk",
+  "type": "object",
+  "required": [
+    "id",
+    "strategy",
+    "content",
+    "sourceBlockIds",
+    "headingPath",
+    "tokenCount",
+    "contentHash"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique chunk ID (chk_...)"
+    },
+    "strategy": {
+      "type": "string",
+      "enum": ["recursive", "heading_aware"],
+      "description": "Chunking strategy used"
+    },
+    "content": {
+      "type": "string",
+      "description": "Chunk text content"
+    },
+    "sourceBlockIds": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "IDs of source blocks contributing to this chunk"
+    },
+    "headingPath": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Heading hierarchy associated with chunk"
+    },
+    "tokenCount": {
+      "type": "integer",
+      "description": "Word or token count of chunk"
+    },
+    "contentHash": {
+      "type": "string",
+      "description": "SHA-256 hash of chunk content"
+    }
+  }
+}

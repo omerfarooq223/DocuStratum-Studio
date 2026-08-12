@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>WebRAG Studio - Demo Documentation Fixture</title>
+  <style>
+    body { font-family: sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; line-height: 1.6; }
+    .callout { background: #fffbe6; border-left: 4px solid #ffe58f; padding: 12px 16px; margin: 16px 0; border-radius: 4px; }
+    pre { background: #f5f5f5; padding: 12px; border-radius: 4px; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+    th, td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; }
+    th { background-color: #fafafa; }
+  </style>
+</head>
+<body>
+  <main id="main-content">
+    <h1>Authentication API Reference</h1>
+    <p>Welcome to the WebRAG Studio authentication docs. This reference explains how to issue, refresh, and revoke bearer tokens for API requests.</p>
+    
+    <div class="callout warning">
+      <strong>Important:</strong> Never expose client secrets or API keys in frontend code or public repositories. Store secrets securely on your backend service.
+    </div>
+
+    <h2>Token Generation</h2>
+    <p>To acquire an access token, send a <code>POST</code> request to the <code>/oauth/token</code> endpoint with valid client credentials.</p>
+    
+    <pre><code class="language-bash">curl -X POST https://api.webrag.local/v1/oauth/token \
+  -H "Content-Type: application/json" \
+  -d '{"client_id": "demo_app", "grant_type": "client_credentials"}'</code></pre>
+
+    <h2>Supported Scopes</h2>
+    <p>The following OAuth scopes are available for access tokens:</p>
+    <ul>
+      <li><code>read:blocks</code> - Allows extracting semantic page blocks.</li>
+      <li><code>write:chunks</code> - Permits chunking and vector storage operations.</li>
+      <li><code>execute:rag</code> - Grants access to local similarity retrieval and LLM answer generation.</li>
+    </ul>
+
+    <h2>Response Format</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Field</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>access_token</td>
+          <td>string</td>
+          <td>JSON Web Token (JWT) used to authenticate API requests.</td>
+        </tr>
+        <tr>
+          <td>expires_in</td>
+          <td>integer</td>
+          <td>Token validity duration in seconds (default 3600).</td>
+        </tr>
+        <tr>
+          <td>token_type</td>
+          <td>string</td>
+          <td>Always <code>Bearer</code>.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Sensitive controls to verify DOM exclusion -->
+    <form id="ignored-login-form" style="margin-top: 30px; padding: 15px; border: 1px dashed #ccc;">
+      <h3>User Login (Internal Form)</h3>
+      <label>Username: <input type="text" name="username" value="user_secret_input" /></label><br/><br/>
+      <label>Password: <input type="password" name="password" value="hidden_password_val" /></label><br/><br/>
+      <button type="submit">Submit</button>
+    </form>
+  </main>
+</body>
+</html>
