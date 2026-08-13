@@ -18,6 +18,10 @@ function copyManifest() {
 
 export default defineConfig({
   plugins: [react(), copyManifest()],
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./src/capture/__tests__/setup.ts']
+  },
   build: {
     outDir: 'dist',
     emptyOutDir: true,
