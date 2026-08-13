@@ -1,6 +1,5 @@
 from typing import List, Optional, Literal
 from pydantic import BaseModel, Field
-from datetime import datetime
 
 CaptureMode = Literal["selection", "element", "page"]
 BlockType = Literal["heading", "paragraph", "list", "code", "table", "callout"]
@@ -28,10 +27,25 @@ class ErrorDetail(BaseModel):
 class ErrorResponse(BaseModel):
     error: ErrorDetail
 
+class TextQuote(BaseModel):
+    exact: str
+    prefix: Optional[str] = None
+    suffix: Optional[str] = None
+
 class SourceAnchor(BaseModel):
+    blockId: str
+    headingPath: List[str]
     cssSelector: str
-    textQuote: str
+    textQuote: TextQuote
     nodePath: Optional[str] = None
+
+class BlockAttributes(BaseModel):
+    headingLevel: Optional[int] = Field(default=None, ge=1, le=6)
+    listKind: Optional[Literal["ordered", "unordered"]] = None
+    codeLanguage: Optional[str] = None
+    tableHeaders: Optional[List[str]] = None
+    tableRows: Optional[List[List[str]]] = None
+    calloutKind: Optional[str] = None
 
 class BlockModel(BaseModel):
     id: str
@@ -41,6 +55,7 @@ class BlockModel(BaseModel):
     sourceAnchor: SourceAnchor
     contentHash: str
     included: bool = True
+    attributes: Optional[BlockAttributes] = None
 
 class CaptureModel(BaseModel):
     id: str
@@ -51,4 +66,7 @@ class CaptureModel(BaseModel):
     timestamp: str
     extractorVersion: str = "1.0.0"
     contentHash: str
-    blocks: List[BlockModel] = []
+
+class CaptureResultModel(BaseModel):
+    capture: CaptureModel
+    blocks: List[BlockModel] = Field(default_factory=list)

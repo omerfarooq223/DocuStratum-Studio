@@ -7,6 +7,8 @@
     "check": "bash scripts/check-all.sh",
     "test": "bash scripts/check-all.sh",
     "build:extension": "cd extension && npm run build",
+    "test:capture": "cd extension && npm test",
+    "test:capture:live": "cd extension && npm run test:capture:live",
     "test:service": "cd service && python3 -m pytest"
   },
   "keywords": [

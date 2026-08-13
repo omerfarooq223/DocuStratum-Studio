@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>WebRAG Golden Documentation</title>
+    <link rel="canonical" href="/docs/golden" />
+    <style>.css-secret { display: none; }</style>
+    <script>window.__sensitive_script_value = 'SCRIPT_SECRET';</script>
+  </head>
+  <body>
+    <nav><a href="/private">NAVIGATION_SECRET</a></nav>
+    <main id="content">
+      <h1>WebRAG Capture Guide</h1>
+      <p id="intro">Capture <strong>deterministic tokens</strong> while preserving source provenance.</p>
+
+      <section id="install">
+        <h2>Install</h2>
+        <p>Use the local extension; no page content leaves the browser.</p>
+        <ul>
+          <li>Open the side panel</li>
+          <li>Choose a mode
+            <ol>
+              <li>Select text</li>
+              <li>Pick an element</li>
+            </ol>
+          </li>
+        </ul>
+        <pre><code class="language-typescript">const mode = 'page';
+capture(mode);</code></pre>
+      </section>
+
+      <section id="reference">
+        <h2>Reference</h2>
+        <aside class="callout warning" role="alert"><strong>Warning:</strong> Never capture form values.</aside>
+        <blockquote>Citations should resolve to the original passage.</blockquote>
+        <table>
+          <thead><tr><th>Mode</th><th>Scope</th></tr></thead>
+          <tbody>
+            <tr><td>selection</td><td>Chosen text</td></tr>
+            <tr><td>page</td><td>Main content</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Headerless table</h3>
+        <table id="headerless">
+          <tr><td>alpha</td><td>one | first</td></tr>
+          <tr><td>beta</td><td>two</td></tr>
+        </table>
+      </section>
+
+      <form>
+        <h2>FORM_HEADING_SECRET</h2>
+        <label>API key <input value="FORM_VALUE_SECRET" /></label>
+        <input type="password" value="PASSWORD_SECRET" />
+        <button>CONTROL_SECRET</button>
+      </form>
+      <div contenteditable="true">EDITABLE_SECRET</div>
+      <p hidden>HIDDEN_ATTRIBUTE_SECRET</p>
+      <p aria-hidden="true">ARIA_HIDDEN_SECRET</p>
+      <p style="display:none">DISPLAY_NONE_SECRET</p>
+      <div data-webrag-exclude>EXPLICIT_EXCLUSION_SECRET</div>
+    </main>
+    <footer>FOOTER_SECRET</footer>
+  </body>
+</html>

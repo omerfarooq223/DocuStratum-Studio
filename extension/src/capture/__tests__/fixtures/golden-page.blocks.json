@@ -1,0 +1,14 @@
+[
+  {"type":"heading","content":"WebRAG Capture Guide","headingPath":["WebRAG Capture Guide"],"attributes":{"headingLevel":1}},
+  {"type":"paragraph","content":"Capture deterministic tokens while preserving source provenance.","headingPath":["WebRAG Capture Guide"]},
+  {"type":"heading","content":"Install","headingPath":["WebRAG Capture Guide","Install"],"attributes":{"headingLevel":2}},
+  {"type":"paragraph","content":"Use the local extension; no page content leaves the browser.","headingPath":["WebRAG Capture Guide","Install"]},
+  {"type":"list","content":"- Open the side panel\n- Choose a mode\n  1. Select text\n  2. Pick an element","headingPath":["WebRAG Capture Guide","Install"],"attributes":{"listKind":"unordered"}},
+  {"type":"code","content":"const mode = 'page';\ncapture(mode);","headingPath":["WebRAG Capture Guide","Install"],"attributes":{"codeLanguage":"typescript"}},
+  {"type":"heading","content":"Reference","headingPath":["WebRAG Capture Guide","Reference"],"attributes":{"headingLevel":2}},
+  {"type":"callout","content":"Warning: Never capture form values.","headingPath":["WebRAG Capture Guide","Reference"],"attributes":{"calloutKind":"warning"}},
+  {"type":"callout","content":"Citations should resolve to the original passage.","headingPath":["WebRAG Capture Guide","Reference"],"attributes":{"calloutKind":"quote"}},
+  {"type":"table","content":"| Mode | Scope |\n| --- | --- |\n| selection | Chosen text |\n| page | Main content |","headingPath":["WebRAG Capture Guide","Reference"],"attributes":{"tableHeaders":["Mode","Scope"],"tableRows":[["selection","Chosen text"],["page","Main content"]]}},
+  {"type":"heading","content":"Headerless table","headingPath":["WebRAG Capture Guide","Reference","Headerless table"],"attributes":{"headingLevel":3}},
+  {"type":"table","content":"| Column 1 | Column 2 |\n| --- | --- |\n| alpha | one \\| first |\n| beta | two |","headingPath":["WebRAG Capture Guide","Reference","Headerless table"],"attributes":{"tableHeaders":["Column 1","Column 2"],"tableRows":[["alpha","one | first"],["beta","two"]]}}
+]

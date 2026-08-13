@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-echo "=== WebRAG Studio Day 1 Automated Quality Gate ==="
+echo "=== WebRAG Studio Automated Quality Gate ==="
 echo ""
 
 # Determine Python environment
@@ -13,21 +13,23 @@ else
   PYTEST="pytest"
 fi
 
-echo "[1/3] Running Python Backend Service Tests..."
+echo "[1/2] Running Python Backend Service Tests..."
 PYTHONPATH=. $PYTEST service/tests -v
 
-echo "[2/3] Checking Node.js Dependencies & Extension Build..."
+echo "[2/2] Running DOM Capture Tests & Extension Build..."
 if [ -d "extension/node_modules" ]; then
   cd extension
+  npm test
   npm run build
   cd ..
 else
   echo "Node modules not found in extension/. Installing dependencies..."
   cd extension
   npm install
+  npm test
   npm run build
   cd ..
 fi
 
 echo ""
-echo "=== ALL DAY 1 QUALITY CHECKS PASSED SUCCESSFULLY ==="
+echo "=== ALL QUALITY CHECKS PASSED SUCCESSFULLY ==="

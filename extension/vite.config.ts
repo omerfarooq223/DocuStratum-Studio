@@ -9,8 +9,8 @@ function copyManifest() {
     name: 'copy-manifest',
     closeBundle() {
       fs.copyFileSync(
-        resolve(__dirname, 'manifest.json'),
-        resolve(__dirname, 'dist/manifest.json')
+        resolve(import.meta.dirname, 'manifest.json'),
+        resolve(import.meta.dirname, 'dist/manifest.json')
       );
     }
   };
@@ -23,9 +23,9 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       input: {
-        sidepanel: resolve(__dirname, 'src/sidepanel/index.html'),
-        background: resolve(__dirname, 'src/background/index.ts'),
-        content: resolve(__dirname, 'src/content/index.ts')
+        sidepanel: resolve(import.meta.dirname, 'src/sidepanel/index.html'),
+        background: resolve(import.meta.dirname, 'src/background/index.ts'),
+        content: resolve(import.meta.dirname, 'src/content/index.ts')
       },
       output: {
         entryFileNames: (chunkInfo) => {

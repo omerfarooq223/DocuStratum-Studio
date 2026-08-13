@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:capture:live": "WEBRAG_LIVE_TEST=1 vitest run src/capture/__tests__/capture.live.test.ts"
   },
   "dependencies": {
     "react": "^18.3.1",
@@ -14,10 +16,13 @@
   },
   "devDependencies": {
     "@types/chrome": "^0.0.280",
+    "@types/node": "^22.10.2",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
-    "@vitejs/plugin-react": "^4.3.4",
+    "@vitejs/plugin-react": "^6.0.5",
+    "jsdom": "^29.0.0",
     "typescript": "^5.6.3",
-    "vite": "^5.4.11"
+    "vite": "^8.2.1",
+    "vitest": "^4.1.10"
   }
 }

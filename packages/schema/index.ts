@@ -13,10 +13,27 @@ export interface Capture {
 
 export type BlockType = 'heading' | 'paragraph' | 'list' | 'code' | 'table' | 'callout';
 
+export interface TextQuote {
+  exact: string;
+  prefix?: string;
+  suffix?: string;
+}
+
 export interface SourceAnchor {
+  blockId: string;
+  headingPath: string[];
   cssSelector: string;
-  textQuote: string;
+  textQuote: TextQuote;
   nodePath?: string;
+}
+
+export interface BlockAttributes {
+  headingLevel?: number;
+  listKind?: 'ordered' | 'unordered';
+  codeLanguage?: string;
+  tableHeaders?: string[];
+  tableRows?: string[][];
+  calloutKind?: string;
 }
 
 export interface Block {
@@ -27,6 +44,12 @@ export interface Block {
   sourceAnchor: SourceAnchor;
   contentHash: string;
   included: boolean;
+  attributes?: BlockAttributes;
+}
+
+export interface CaptureResult {
+  capture: Capture;
+  blocks: Block[];
 }
 
 export type ChunkingStrategy = 'recursive' | 'heading_aware';
