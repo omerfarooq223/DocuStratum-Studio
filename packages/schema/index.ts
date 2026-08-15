@@ -54,14 +54,51 @@ export interface CaptureResult {
 
 export type ChunkingStrategy = 'recursive' | 'heading_aware';
 
+export interface RecursiveChunkSettings {
+  maxCharacters: number;
+  overlapCharacters: number;
+}
+
+export interface HeadingAwareChunkSettings {
+  maxCharacters: number;
+}
+
+export interface ChunkSourceSpan {
+  blockId: string;
+  startOffset: number;
+  endOffset: number;
+  overlapCharacters: number;
+}
+
+export interface ChunkOverlap {
+  fromChunkId: string;
+  fromSequence: number;
+  characterCount: number;
+  contentHash: string;
+}
+
+export interface ChunkContinuation {
+  sourceBlockId: string;
+  blockType: BlockType;
+  part: number;
+  totalParts: number;
+  reason: 'oversized' | 'boundary' | 'overlap';
+}
+
 export interface Chunk {
   id: string;
+  sourceNamespace: string;
   strategy: ChunkingStrategy;
+  sequence: number;
   content: string;
   sourceBlockIds: string[];
+  sourceSpans: ChunkSourceSpan[];
   headingPath: string[];
   tokenCount: number;
+  characterCount: number;
   contentHash: string;
+  overlap?: ChunkOverlap;
+  continuations?: ChunkContinuation[];
 }
 
 export interface RetrievalResult {

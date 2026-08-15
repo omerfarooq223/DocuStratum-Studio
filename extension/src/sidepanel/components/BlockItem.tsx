@@ -5,9 +5,10 @@ interface BlockItemProps {
   block: Block;
   index: number;
   onToggle: (blockId: string) => void;
+  highlighted?: boolean;
 }
 
-export const BlockItem: React.FC<BlockItemProps> = ({ block, index, onToggle }) => {
+export const BlockItem: React.FC<BlockItemProps> = ({ block, index, onToggle, highlighted = false }) => {
   const [expanded, setExpanded] = useState(false);
   const isIncluded = block.included !== false;
 
@@ -114,7 +115,10 @@ export const BlockItem: React.FC<BlockItemProps> = ({ block, index, onToggle }) 
   };
 
   return (
-    <div className={`block-item ${isIncluded ? 'included' : 'excluded'}`}>
+    <div
+      id={`source-${block.id}`}
+      className={`block-item ${isIncluded ? 'included' : 'excluded'} ${highlighted ? 'highlighted' : ''}`}
+    >
       <div className="block-header">
         <div className="block-title-group">
           <span className="block-index">#{index + 1}</span>

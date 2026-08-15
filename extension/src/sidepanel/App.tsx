@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   CaptureResult,
   Block,
@@ -15,9 +15,11 @@ import { CaptureControls } from './components/CaptureControls';
 import { ExtractionSummary } from './components/ExtractionSummary';
 import { BlockTree } from './components/BlockTree';
 import { CleanedMarkdownPreview } from './components/CleanedMarkdownPreview';
+import { ChunkComparison } from './components/ChunkComparison';
 import { EmptyState, RestrictedPageState, ErrorState } from './components/StatusViews';
 
 const SERVICE_URL = 'http://127.0.0.1:8000';
+const EMPTY_BLOCKS: Block[] = [];
 
 export const App: React.FC = () => {
   // Service health state
@@ -34,7 +36,10 @@ export const App: React.FC = () => {
   const [activeMode, setActiveMode] = useState<CaptureMode | null>(null);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [restrictedUrl, setRestrictedUrl] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'blocks' | 'markdown'>('blocks');
+  const [activeTab, setActiveTab] = useState<'blocks' | 'markdown' | 'chunks'>('blocks');
+  const [highlightedBlockIds, setHighlightedBlockIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
 
   // Check health of local FastAPI backend
   const checkHealth = async () => {
@@ -81,6 +86,7 @@ export const App: React.FC = () => {
           setCaptureResult(res);
           setOriginalBlocks(res.blocks.map((b: Block) => ({ ...b })));
           setCaptureStatus('success');
+          setHighlightedBlockIds(new Set());
           setActiveMode(null);
           void saveDraftCapture(res);
         } else if (message.type === 'WEBRAG_PICKER_CANCELLED') {
@@ -115,6 +121,7 @@ export const App: React.FC = () => {
         setCaptureResult(result);
         setOriginalBlocks(result.blocks.map((b: Block) => ({ ...b })));
         setCaptureStatus('success');
+        setHighlightedBlockIds(new Set());
         setActiveMode(null);
         void saveDraftCapture(result);
       }
@@ -174,12 +181,31 @@ export const App: React.FC = () => {
     setCaptureStatus('idle');
     setErrorDetails(null);
     setRestrictedUrl(null);
+    setHighlightedBlockIds(new Set());
   };
 
+  const handleHighlightBlocks = (blockIds: string[]) => {
+    setHighlightedBlockIds(new Set(blockIds));
+    setActiveTab('blocks');
+  };
+
+  useEffect(() => {
+    if (activeTab !== 'blocks' || highlightedBlockIds.size === 0) return;
+    const firstBlockId = highlightedBlockIds.values().next().value as string | undefined;
+    if (!firstBlockId) return;
+    const frame = requestAnimationFrame(() => {
+      document.getElementById(`source-${firstBlockId}`)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [activeTab, highlightedBlockIds]);
+
   // Metrics & Cleaned Markdown derived values
-  const currentBlocks = captureResult?.blocks || [];
-  const metrics = calculateExtractionMetrics(currentBlocks);
-  const cleanedMarkdown = generateCleanedMarkdown(currentBlocks);
+  const currentBlocks = captureResult?.blocks ?? EMPTY_BLOCKS;
+  const metrics = useMemo(() => calculateExtractionMetrics(currentBlocks), [currentBlocks]);
+  const cleanedMarkdown = useMemo(() => generateCleanedMarkdown(currentBlocks), [currentBlocks]);
 
   return (
     <div className="container">
@@ -189,10 +215,10 @@ export const App: React.FC = () => {
           <div className="logo-icon">W</div>
           <h1 className="title">WebRAG Studio</h1>
         </div>
-        <div
+        <button
+          type="button"
           className={`status-badge status-${healthState}`}
           onClick={checkHealth}
-          style={{ cursor: 'pointer' }}
           title={
             health && version
               ? `Backend v${health.version} (API v${version.apiVersion}, Schema v${health.schemaVersion})`
@@ -201,7 +227,7 @@ export const App: React.FC = () => {
         >
           <span className="status-dot"></span>
           <span>{healthState.toUpperCase()}</span>
-        </div>
+        </button>
       </header>
 
       {/* Capture Mode Triggers */}
@@ -250,6 +276,12 @@ export const App: React.FC = () => {
             >
               Cleaned Markdown Preview
             </button>
+            <button
+              className={`tab-btn ${activeTab === 'chunks' ? 'active' : ''}`}
+              onClick={() => setActiveTab('chunks')}
+            >
+              Compare Chunks
+            </button>
           </nav>
 
           {activeTab === 'blocks' ? (
@@ -259,12 +291,20 @@ export const App: React.FC = () => {
               onIncludeAll={handleIncludeAll}
               onExcludeAll={handleExcludeAll}
               onRestoreOriginal={handleRestoreOriginal}
+              highlightedBlockIds={highlightedBlockIds}
+              onClearHighlight={() => setHighlightedBlockIds(new Set())}
             />
-          ) : (
+          ) : activeTab === 'markdown' ? (
             <CleanedMarkdownPreview
               markdown={cleanedMarkdown}
               includedCount={metrics.includedBlocks}
               totalCount={metrics.totalBlocks}
+            />
+          ) : (
+            <ChunkComparison
+              blocks={currentBlocks}
+              sourceNamespace={captureResult.capture.id}
+              onHighlightBlocks={handleHighlightBlocks}
             />
           )}
         </>

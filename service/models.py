@@ -70,3 +70,37 @@ class CaptureModel(BaseModel):
 class CaptureResultModel(BaseModel):
     capture: CaptureModel
     blocks: List[BlockModel] = Field(default_factory=list)
+
+class ChunkSourceSpan(BaseModel):
+    blockId: str
+    startOffset: int = Field(ge=0)
+    endOffset: int = Field(ge=0)
+    overlapCharacters: int = Field(ge=0)
+
+class ChunkOverlap(BaseModel):
+    fromChunkId: str
+    fromSequence: int = Field(ge=0)
+    characterCount: int = Field(ge=1)
+    contentHash: str
+
+class ChunkContinuation(BaseModel):
+    sourceBlockId: str
+    blockType: BlockType
+    part: int = Field(ge=1)
+    totalParts: int = Field(ge=2)
+    reason: Literal["oversized", "boundary", "overlap"]
+
+class ChunkModel(BaseModel):
+    id: str
+    sourceNamespace: str
+    strategy: ChunkingStrategy
+    sequence: int = Field(ge=0)
+    content: str
+    sourceBlockIds: List[str]
+    sourceSpans: List[ChunkSourceSpan]
+    headingPath: List[str]
+    tokenCount: int = Field(ge=0)
+    characterCount: int = Field(ge=0)
+    contentHash: str
+    overlap: Optional[ChunkOverlap] = None
+    continuations: Optional[List[ChunkContinuation]] = None

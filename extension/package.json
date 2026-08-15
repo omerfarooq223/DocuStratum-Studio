@@ -8,6 +8,7 @@
     "build": "tsc && vite build",
     "type-check": "tsc --noEmit",
     "test": "vitest run",
+    "test:chunking": "vitest run src/chunking/__tests__/chunking.test.ts src/sidepanel/__tests__/chunk-comparison.test.tsx src/sidepanel/__tests__/sidepanel.test.tsx",
     "test:capture:live": "WEBRAG_LIVE_TEST=1 vitest run src/capture/__tests__/capture.live.test.ts"
   },
   "dependencies": {

@@ -8,7 +8,11 @@ interface BlockTreeProps {
   onIncludeAll: () => void;
   onExcludeAll: () => void;
   onRestoreOriginal: () => void;
+  highlightedBlockIds?: ReadonlySet<string>;
+  onClearHighlight?: () => void;
 }
+
+const EMPTY_HIGHLIGHTS: ReadonlySet<string> = new Set();
 
 export const BlockTree: React.FC<BlockTreeProps> = ({
   blocks,
@@ -16,6 +20,8 @@ export const BlockTree: React.FC<BlockTreeProps> = ({
   onIncludeAll,
   onExcludeAll,
   onRestoreOriginal,
+  highlightedBlockIds = EMPTY_HIGHLIGHTS,
+  onClearHighlight,
 }) => {
   return (
     <div className="block-tree-card">
@@ -42,6 +48,15 @@ export const BlockTree: React.FC<BlockTreeProps> = ({
         </div>
       </div>
 
+      {highlightedBlockIds.size > 0 ? (
+        <div className="source-highlight-banner" role="status">
+          <span>Highlighted from chunk: {highlightedBlockIds.size} source block(s)</span>
+          {onClearHighlight ? (
+            <button type="button" onClick={onClearHighlight}>Clear</button>
+          ) : null}
+        </div>
+      ) : null}
+
       <div className="block-list">
         {blocks.map((block, idx) => (
           <BlockItem
@@ -49,6 +64,7 @@ export const BlockTree: React.FC<BlockTreeProps> = ({
             block={block}
             index={idx}
             onToggle={onToggleBlock}
+            highlighted={highlightedBlockIds.has(block.id)}
           />
         ))}
       </div>

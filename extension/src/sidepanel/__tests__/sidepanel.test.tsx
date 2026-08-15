@@ -1,8 +1,10 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { afterEach, describe, it, expect } from 'vitest';
+import { cleanup, render, screen, fireEvent } from '@testing-library/react';
 import { BlockTree } from '../components/BlockTree';
 import { CleanedMarkdownPreview } from '../components/CleanedMarkdownPreview';
 import { Block } from '../../../../packages/schema';
+
+afterEach(cleanup);
 
 describe('SidePanel UI Components', () => {
   const sampleBlocks: Block[] = [
@@ -89,5 +91,28 @@ describe('SidePanel UI Components', () => {
     expect(screen.getByText('LIVE CLEANED MARKDOWN')).toBeDefined();
     expect(screen.getByText(/Generated from/)).toBeDefined();
     expect(screen.getByText('📋 Copy Markdown')).toBeDefined();
+  });
+
+  it('visibly highlights every source block selected by a chunk', () => {
+    let cleared = false;
+    render(
+      <BlockTree
+        blocks={sampleBlocks}
+        onToggleBlock={() => undefined}
+        onIncludeAll={() => undefined}
+        onExcludeAll={() => undefined}
+        onRestoreOriginal={() => undefined}
+        highlightedBlockIds={new Set(['blk-1', 'blk-2'])}
+        onClearHighlight={() => {
+          cleared = true;
+        }}
+      />
+    );
+
+    expect(screen.getByRole('status').textContent).toContain('2 source block(s)');
+    expect(document.getElementById('source-blk-1')?.classList.contains('highlighted')).toBe(true);
+    expect(document.getElementById('source-blk-2')?.classList.contains('highlighted')).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+    expect(cleared).toBe(true);
   });
 });

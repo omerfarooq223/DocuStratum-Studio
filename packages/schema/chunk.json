@@ -4,11 +4,15 @@
   "type": "object",
   "required": [
     "id",
+    "sourceNamespace",
     "strategy",
+    "sequence",
     "content",
     "sourceBlockIds",
+    "sourceSpans",
     "headingPath",
     "tokenCount",
+    "characterCount",
     "contentHash"
   ],
   "properties": {
@@ -16,10 +20,20 @@
       "type": "string",
       "description": "Unique chunk ID (chk_...)"
     },
+    "sourceNamespace": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable namespace for the source capture or document"
+    },
     "strategy": {
       "type": "string",
       "enum": ["recursive", "heading_aware"],
       "description": "Chunking strategy used"
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Zero-based chunk order within the strategy result"
     },
     "content": {
       "type": "string",
@@ -30,6 +44,21 @@
       "items": { "type": "string" },
       "description": "IDs of source blocks contributing to this chunk"
     },
+    "sourceSpans": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["blockId", "startOffset", "endOffset", "overlapCharacters"],
+        "properties": {
+          "blockId": { "type": "string" },
+          "startOffset": { "type": "integer", "minimum": 0 },
+          "endOffset": { "type": "integer", "minimum": 0 },
+          "overlapCharacters": { "type": "integer", "minimum": 0 }
+        },
+        "additionalProperties": false
+      },
+      "description": "Exact UTF-16 offsets contributed by each source block"
+    },
     "headingPath": {
       "type": "array",
       "items": { "type": "string" },
@@ -37,11 +66,50 @@
     },
     "tokenCount": {
       "type": "integer",
+      "minimum": 0,
       "description": "Word or token count of chunk"
+    },
+    "characterCount": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Unicode code-point count of chunk content"
     },
     "contentHash": {
       "type": "string",
       "description": "SHA-256 hash of chunk content"
+    },
+    "overlap": {
+      "type": "object",
+      "required": ["fromChunkId", "fromSequence", "characterCount", "contentHash"],
+      "properties": {
+        "fromChunkId": { "type": "string" },
+        "fromSequence": { "type": "integer", "minimum": 0 },
+        "characterCount": { "type": "integer", "minimum": 1 },
+        "contentHash": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "continuations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["sourceBlockId", "blockType", "part", "totalParts", "reason"],
+        "properties": {
+          "sourceBlockId": { "type": "string" },
+          "blockType": {
+            "type": "string",
+            "enum": ["heading", "paragraph", "list", "code", "table", "callout"]
+          },
+          "part": { "type": "integer", "minimum": 1 },
+          "totalParts": { "type": "integer", "minimum": 2 },
+          "reason": {
+            "type": "string",
+            "enum": ["oversized", "boundary", "overlap"]
+          }
+        },
+        "additionalProperties": false
+      }
     }
-  }
+  },
+  "additionalProperties": false
 }
