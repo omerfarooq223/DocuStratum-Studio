@@ -129,6 +129,46 @@ export interface Manifest {
   files: ManifestFileRef[];
 }
 
+export interface ModelStatusResponse {
+  status: 'ready' | 'loading' | 'unloaded' | 'error';
+  modelName: string;
+  dimension: number;
+  device: string;
+  cachedEmbeddingsCount: number;
+  isLocal: boolean;
+}
+
+export interface EmbedRequest {
+  texts?: string[];
+  chunks?: Chunk[];
+  model?: string;
+}
+
+export interface EmbedResponse {
+  embeddings: number[][];
+  model: string;
+  dimension: number;
+  latencyMs: number;
+  cachedCount: number;
+  computedCount: number;
+}
+
+export interface SearchRequest {
+  query: string;
+  chunks: Chunk[];
+  topK?: number;
+  strategy?: ChunkingStrategy;
+}
+
+export interface SearchResponse {
+  query: string;
+  results: RetrievalResult[];
+  latencyMs: number;
+  model: string;
+  dimension: number;
+  totalCandidates: number;
+}
+
 export interface HealthResponse {
   status: 'healthy' | 'degraded' | 'unhealthy';
   version: string;
@@ -143,3 +183,4 @@ export interface VersionResponse {
   supportedModes: CaptureMode[];
   supportedChunkers: ChunkingStrategy[];
 }
+

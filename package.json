@@ -10,6 +10,7 @@
     "test:capture": "cd extension && npm test",
     "test:capture:live": "cd extension && npm run test:capture:live",
     "test:chunking": "cd extension && npm run test:chunking",
+    "test:retrieval": "cd extension && npm run test:retrieval",
     "test:service": "cd service && python3 -m pytest"
   },
   "keywords": [

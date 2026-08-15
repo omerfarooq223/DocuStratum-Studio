@@ -16,10 +16,14 @@ import { ExtractionSummary } from './components/ExtractionSummary';
 import { BlockTree } from './components/BlockTree';
 import { CleanedMarkdownPreview } from './components/CleanedMarkdownPreview';
 import { ChunkComparison } from './components/ChunkComparison';
+import { RetrievalView } from './components/RetrievalView';
 import { EmptyState, RestrictedPageState, ErrorState } from './components/StatusViews';
+import { chunkBothStrategies } from '../chunking';
+import type { Chunk } from '../../../packages/schema';
 
 const SERVICE_URL = 'http://127.0.0.1:8000';
 const EMPTY_BLOCKS: Block[] = [];
+const EMPTY_CHUNKS: Chunk[] = [];
 
 export const App: React.FC = () => {
   // Service health state
@@ -36,10 +40,12 @@ export const App: React.FC = () => {
   const [activeMode, setActiveMode] = useState<CaptureMode | null>(null);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [restrictedUrl, setRestrictedUrl] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'blocks' | 'markdown' | 'chunks'>('blocks');
+  const [activeTab, setActiveTab] = useState<'blocks' | 'markdown' | 'chunks' | 'retrieve'>('blocks');
+  const [allChunks, setAllChunks] = useState<Chunk[]>(EMPTY_CHUNKS);
   const [highlightedBlockIds, setHighlightedBlockIds] = useState<ReadonlySet<string>>(
     () => new Set(),
   );
+
 
   // Check health of local FastAPI backend
   const checkHealth = async () => {
@@ -207,6 +213,38 @@ export const App: React.FC = () => {
   const metrics = useMemo(() => calculateExtractionMetrics(currentBlocks), [currentBlocks]);
   const cleanedMarkdown = useMemo(() => generateCleanedMarkdown(currentBlocks), [currentBlocks]);
 
+  // Derive heading paths for query suggestions
+  const headingPaths = useMemo(
+    () => currentBlocks.filter((b) => b.included !== false && b.headingPath?.length).map((b) => b.headingPath),
+    [currentBlocks]
+  );
+
+  // Automatically compute deterministic chunks across both strategies for retrieval
+  useEffect(() => {
+    if (!captureResult || currentBlocks.length === 0) {
+      setAllChunks(EMPTY_CHUNKS);
+      return;
+    }
+
+    let cancelled = false;
+    void chunkBothStrategies(
+      currentBlocks,
+      captureResult.capture.id,
+      { maxCharacters: 700, overlapCharacters: 80 },
+      { maxCharacters: 700 }
+    ).then((result) => {
+      if (cancelled) return;
+      setAllChunks([...result.recursive, ...result.headingAware]);
+    }).catch(() => {
+      if (cancelled) return;
+      setAllChunks(EMPTY_CHUNKS);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [captureResult, currentBlocks]);
+
   return (
     <div className="container">
       {/* Extension Header */}
@@ -282,6 +320,12 @@ export const App: React.FC = () => {
             >
               Compare Chunks
             </button>
+            <button
+              className={`tab-btn ${activeTab === 'retrieve' ? 'active' : ''}`}
+              onClick={() => setActiveTab('retrieve')}
+            >
+              Retrieve ({allChunks.length})
+            </button>
           </nav>
 
           {activeTab === 'blocks' ? (
@@ -300,11 +344,18 @@ export const App: React.FC = () => {
               includedCount={metrics.includedBlocks}
               totalCount={metrics.totalBlocks}
             />
-          ) : (
+          ) : activeTab === 'chunks' ? (
             <ChunkComparison
               blocks={currentBlocks}
               sourceNamespace={captureResult.capture.id}
               onHighlightBlocks={handleHighlightBlocks}
+            />
+          ) : (
+            <RetrievalView
+              chunks={allChunks}
+              headingPaths={headingPaths}
+              onInspectBlock={(blockId) => handleHighlightBlocks([blockId])}
+              onInspectChunk={() => setActiveTab('chunks')}
             />
           )}
         </>
@@ -317,3 +368,4 @@ export const App: React.FC = () => {
     </div>
   );
 };
+
