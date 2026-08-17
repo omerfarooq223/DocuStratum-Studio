@@ -11,19 +11,14 @@ function normalizeWhitespace(text: string): string {
 }
 
 /**
- * Locate target element using CSS selector with content verification
+ * Locate target element using CSS selector
  */
 function findBySelector(target: HighlightTarget): HTMLElement | null {
   if (!target.cssSelector) return null;
   try {
     const el = document.querySelector(target.cssSelector);
     if (el instanceof HTMLElement) {
-      const elText = normalizeWhitespace(el.innerText || el.textContent || '');
-      const expectedText = normalizeWhitespace(target.textQuote.exact);
-      
-      if (!expectedText || elText.includes(expectedText.substring(0, Math.min(30, expectedText.length)))) {
-        return el;
-      }
+      return el;
     }
   } catch (e) {
     console.warn('[WebRAG Highlighter] Invalid selector:', target.cssSelector, e);
@@ -142,7 +137,30 @@ export function highlightTargetInDom(target: HighlightTarget): HighlightResponse
   let matchedElement = findBySelector(target);
   let matchMethod = 'selector';
 
-  if (!matchedElement) {
+  if (matchedElement) {
+    const liveContent = normalizeWhitespace(matchedElement.innerText || matchedElement.textContent || '');
+    const expectedContent = normalizeWhitespace(target.textQuote.exact);
+    const matchesContent =
+      !expectedContent ||
+      expectedContent.length < 20 ||
+      liveContent.includes(expectedContent.substring(0, 20));
+
+    if (!matchesContent) {
+      // Selector matched, but content diverged. Try finding by text quote elsewhere
+      const textMatch = findByTextQuote(target);
+      if (textMatch) {
+        matchedElement = textMatch;
+        matchMethod = 'textQuote (relocated)';
+      } else {
+        return {
+          ok: false,
+          status: 'stale',
+          reason: `Live DOM content diverged from capture. Live snippet: "${liveContent.slice(0, 60)}..."`,
+          matchedText: liveContent,
+        };
+      }
+    }
+  } else {
     matchedElement = findByTextQuote(target);
     matchMethod = 'textQuote';
   }
@@ -156,18 +174,6 @@ export function highlightTargetInDom(target: HighlightTarget): HighlightResponse
   }
 
   const liveContent = normalizeWhitespace(matchedElement.innerText || matchedElement.textContent || '');
-  const expectedContent = normalizeWhitespace(target.textQuote.exact);
-
-  const isStale = expectedContent.length > 20 && !liveContent.includes(expectedContent.substring(0, 20));
-
-  if (isStale) {
-    return {
-      ok: false,
-      status: 'stale',
-      reason: `Live DOM content diverged from capture. Live snippet: "${liveContent.slice(0, 60)}..."`,
-      matchedText: liveContent,
-    };
-  }
 
   matchedElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
   matchedElement.classList.add(HIGHLIGHT_ELEMENT_CLASS);

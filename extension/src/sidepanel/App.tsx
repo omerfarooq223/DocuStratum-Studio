@@ -254,6 +254,12 @@ export const App: React.FC = () => {
     [currentBlocks]
   );
 
+  const blocksMap = useMemo(() => {
+    const map = new Map<string, Block>();
+    currentBlocks.forEach((b) => map.set(b.id, b));
+    return map;
+  }, [currentBlocks]);
+
   return (
     <div className="container">
       {/* Extension Header */}
@@ -368,6 +374,7 @@ export const App: React.FC = () => {
           ) : activeTab === 'retrieve' ? (
             <RetrievalView
               chunks={allChunks}
+              blocksMap={blocksMap}
               headingPaths={headingPaths}
               onInspectBlock={(blockId) => handleHighlightBlocks([blockId])}
               onInspectChunk={() => setActiveTab('chunks')}

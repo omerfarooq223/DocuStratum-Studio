@@ -1,9 +1,10 @@
 import uuid
 import time
+import json
 from datetime import datetime, timezone
 from fastapi import FastAPI, Request, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -21,10 +22,15 @@ from service.models import (
     RetrievalQueryResponse,
     DraftQuestionsRequest,
     DraftQuestionsResponse,
+    LLMProviderStatusResponse,
+    GroundedAnswerRequest,
+    GroundedAnswerResponse,
 )
 from service.embeddings import EmbeddingEngine
 from service.retrieval import run_retrieval
 from service.question_generator import generate_draft_questions_from_blocks
+from service.llm import get_llm_provider
+
 
 app = FastAPI(
     title="WebRAG Studio Local Service",
@@ -185,3 +191,65 @@ async def retrieve_chunks(req: RetrievalQueryRequest):
 async def draft_questions(req: DraftQuestionsRequest):
     drafts = generate_draft_questions_from_blocks(req.blocks)
     return DraftQuestionsResponse(questions=drafts)
+
+# Day 7 Grounded LLM Answers Endpoints
+@app.get("/llm/status", response_model=LLMProviderStatusResponse)
+async def get_llm_status():
+    provider = get_llm_provider()
+    return await provider.get_status()
+
+@app.post("/llm/answer", response_model=GroundedAnswerResponse)
+async def generate_grounded_answer(req: GroundedAnswerRequest):
+    if not req.query or not req.query.strip():
+        raise HTTPException(status_code=400, detail="Question/query cannot be empty.")
+    if not req.chunks:
+        raise HTTPException(status_code=400, detail="Candidate chunks list cannot be empty.")
+
+    provider = get_llm_provider()
+    try:
+        response = await provider.generate_answer(
+            query=req.query,
+            chunks=req.chunks,
+            model=req.model,
+            temperature=req.temperature,
+        )
+        return response
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except RuntimeError as re:
+        raise HTTPException(status_code=502, detail=str(re))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Answer generation failed: {str(e)}")
+
+@app.post("/llm/answer/stream")
+async def stream_grounded_answer(req: GroundedAnswerRequest):
+    if not req.query or not req.query.strip():
+        raise HTTPException(status_code=400, detail="Question/query cannot be empty.")
+    if not req.chunks:
+        raise HTTPException(status_code=400, detail="Candidate chunks list cannot be empty.")
+
+    provider = get_llm_provider()
+
+    async def event_generator():
+        try:
+            async for event in provider.stream_answer(
+                query=req.query,
+                chunks=req.chunks,
+                model=req.model,
+                temperature=req.temperature,
+            ):
+                yield f"data: {event.model_dump_json()}\n\n"
+        except Exception as e:
+            err_event_json = f'{{"type":"error","error":{json.dumps(str(e))}}}'
+            yield f"data: {err_event_json}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        }
+    )
+

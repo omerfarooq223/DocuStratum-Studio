@@ -12,6 +12,7 @@ import { queryRetrievalService, generateDraftQuestionsService } from '../utils/r
 import { RetrievalResultCard } from './RetrievalResultCard';
 import { EvaluationMetricsPanel } from './EvaluationMetricsPanel';
 import { TestQuestionManager } from './TestQuestionManager';
+import { GroundedAnswerPanel } from './GroundedAnswerPanel';
 
 interface RetrievalDebuggerProps {
   captureResult: CaptureResult;
@@ -227,6 +228,13 @@ export const RetrievalDebugger: React.FC<RetrievalDebuggerProps> = ({
           </div>
         )}
       </div>
+
+      {/* Grounded LLM Answer Generation */}
+      <GroundedAnswerPanel
+        query={query}
+        chunks={activeChunks}
+        blocksMap={blocksMap}
+      />
 
       {/* Evaluation Questions Manager */}
       <TestQuestionManager

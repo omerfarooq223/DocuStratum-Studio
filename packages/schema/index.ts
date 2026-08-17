@@ -238,3 +238,62 @@ export interface VersionResponse {
   supportedChunkers: ChunkingStrategy[];
 }
 
+// ----------------------------------------------------
+// Day 7 Grounded LLM Answers & Provider Resilience
+// ----------------------------------------------------
+
+export type LLMProviderStatus = 'configured' | 'unconfigured' | 'error' | 'disabled';
+
+export interface LLMProviderStatusResponse {
+  status: LLMProviderStatus;
+  provider: string;
+  model: string;
+  hasApiKey: boolean;
+  isAvailable: boolean;
+  supportedModels: string[];
+  errorMessage?: string;
+}
+
+export interface GroundedAnswerRequest {
+  query: string;
+  chunks: Chunk[];
+  model?: string;
+  temperature?: number;
+}
+
+export interface CitationRef {
+  chunkId: string;
+  sourceBlockIds: string[];
+  headingPath: string[];
+  excerpt: string;
+}
+
+export interface GroundedAnswerResponse {
+  query: string;
+  answer: string;
+  citations: string[];
+  citationRefs: CitationRef[];
+  insufficientEvidence: boolean;
+  model: string;
+  provider: string;
+  latencyMs: number;
+  promptVersion: string;
+}
+
+export type AnswerStreamEventType = 'token' | 'citations' | 'done' | 'error';
+
+export interface AnswerStreamEvent {
+  type: AnswerStreamEventType;
+  token?: string;
+  answer?: string;
+  citations?: string[];
+  citationRefs?: CitationRef[];
+  insufficientEvidence?: boolean;
+  model?: string;
+  provider?: string;
+  latencyMs?: number;
+  promptVersion?: string;
+  error?: string;
+}
+
+

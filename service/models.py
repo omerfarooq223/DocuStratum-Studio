@@ -186,3 +186,56 @@ class TestQuestionModel(BaseModel):
 
 class DraftQuestionsResponse(BaseModel):
     questions: List[TestQuestionModel]
+
+# Day 7 Grounded LLM Answers & Provider Models
+LLMStatusType = Literal["configured", "unconfigured", "error", "disabled"]
+
+class LLMProviderStatusResponse(BaseModel):
+    status: LLMStatusType = "unconfigured"
+    provider: str = "groq"
+    model: str = "llama-3.3-70b-versatile"
+    hasApiKey: bool = False
+    isAvailable: bool = False
+    supportedModels: List[str] = [
+        "llama-3.3-70b-versatile",
+        "llama-3.1-8b-instant",
+        "mixtral-8x7b-32768",
+    ]
+    errorMessage: Optional[str] = None
+
+class CitationRefModel(BaseModel):
+    chunkId: str
+    sourceBlockIds: List[str] = Field(default_factory=list)
+    headingPath: List[str] = Field(default_factory=list)
+    excerpt: str
+
+class GroundedAnswerRequest(BaseModel):
+    query: str = Field(min_length=1, max_length=2000)
+    chunks: List[ChunkModel] = Field(min_length=1)
+    model: Optional[str] = None
+    temperature: float = Field(default=0.1, ge=0.0, le=1.0)
+
+class GroundedAnswerResponse(BaseModel):
+    query: str
+    answer: str
+    citations: List[str] = Field(default_factory=list)
+    citationRefs: List[CitationRefModel] = Field(default_factory=list)
+    insufficientEvidence: bool = False
+    model: str = "llama-3.3-70b-versatile"
+    provider: str = "groq"
+    latencyMs: float
+    promptVersion: str = "v1.0.0"
+
+class AnswerStreamEventModel(BaseModel):
+    type: Literal["token", "citations", "done", "error"]
+    token: Optional[str] = None
+    answer: Optional[str] = None
+    citations: Optional[List[str]] = None
+    citationRefs: Optional[List[CitationRefModel]] = None
+    insufficientEvidence: Optional[bool] = None
+    model: Optional[str] = None
+    provider: Optional[str] = None
+    latencyMs: Optional[float] = None
+    promptVersion: Optional[str] = None
+    error: Optional[str] = None
+

@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Chunk, RetrievalResult, ChunkingStrategy, ModelStatusResponse } from '../../../../packages/schema';
+import { Chunk, RetrievalResult, ChunkingStrategy, ModelStatusResponse, Block } from '../../../../packages/schema';
 import { fetchModelStatus, searchLocalChunks, RetrievalServiceError } from '../../retrieval/client';
 import { SearchResultCard } from './SearchResultCard';
+import { GroundedAnswerPanel } from './GroundedAnswerPanel';
 
 interface RetrievalViewProps {
   chunks: Chunk[];
+  blocksMap?: Map<string, Block>;
   headingPaths?: string[][];
   onInspectBlock?: (blockId: string) => void;
   onInspectChunk?: (chunkId: string) => void;
@@ -12,6 +14,7 @@ interface RetrievalViewProps {
 
 export const RetrievalView: React.FC<RetrievalViewProps> = ({
   chunks,
+  blocksMap = new Map(),
   headingPaths = [],
   onInspectBlock,
   onInspectChunk
@@ -238,6 +241,15 @@ export const RetrievalView: React.FC<RetrievalViewProps> = ({
             </span>
           )}
         </div>
+      )}
+
+      {/* Grounded LLM Answer Generation */}
+      {results.length > 0 && query && (
+        <GroundedAnswerPanel
+          query={query}
+          chunks={chunks}
+          blocksMap={blocksMap}
+        />
       )}
 
       {/* Results List */}
