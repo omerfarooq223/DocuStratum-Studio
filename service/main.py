@@ -1,21 +1,30 @@
 import uuid
+import time
 from datetime import datetime, timezone
 from fastapi import FastAPI, Request, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
 from service.models import (
     HealthResponse,
     VersionResponse,
     ErrorResponse,
     ErrorDetail,
+    ModelStatusResponse,
+    EmbedRequest,
+    EmbedResponse,
+    SearchRequest,
+    SearchResponse,
     RetrievalQueryRequest,
     RetrievalQueryResponse,
     DraftQuestionsRequest,
     DraftQuestionsResponse,
 )
+from service.embeddings import EmbeddingEngine
 from service.retrieval import run_retrieval
 from service.question_generator import generate_draft_questions_from_blocks
-from starlette.exceptions import HTTPException as StarletteHTTPException
 
 app = FastAPI(
     title="WebRAG Studio Local Service",
@@ -39,6 +48,24 @@ async def add_request_metadata(request: Request, call_next):
     response = await call_next(request)
     response.headers["X-Request-ID"] = request_id
     return response
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
+    now_iso = datetime.now(timezone.utc).isoformat()
+    errors_str = "; ".join([f"{'.'.join(str(loc) for loc in err['loc'])}: {err['msg']}" for err in exc.errors()])
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content=ErrorResponse(
+            error=ErrorDetail(
+                code="VALIDATION_ERROR",
+                message=f"Validation failed: {errors_str}",
+                requestId=request_id,
+                timestamp=now_iso
+            )
+        ).model_dump(),
+        headers={"X-Request-ID": request_id}
+    )
 
 @app.exception_handler(StarletteHTTPException)
 async def starlette_http_exception_handler(request: Request, exc: StarletteHTTPException):
@@ -66,7 +93,7 @@ async def global_exception_handler(request: Request, exc: Exception):
         content=ErrorResponse(
             error=ErrorDetail(
                 code="INTERNAL_SERVER_ERROR",
-                message="An unexpected server error occurred.",
+                message=f"An unexpected server error occurred: {str(exc)}",
                 requestId=request_id,
                 timestamp=now_iso
             )
@@ -90,6 +117,57 @@ async def get_health(request: Request):
 async def get_version():
     return VersionResponse()
 
+# Day 5 Embeddings & Vector Search Endpoints
+@app.get("/model/status", response_model=ModelStatusResponse)
+async def get_model_status():
+    engine = EmbeddingEngine.get_instance()
+    return engine.get_status()
+
+@app.post("/embed", response_model=EmbedResponse)
+async def embed_content(payload: EmbedRequest):
+    start = time.perf_counter()
+    engine = EmbeddingEngine.get_instance()
+    
+    if payload.chunks:
+        matrix, cached_count, computed_count = engine.embed_chunks(payload.chunks)
+    elif payload.texts:
+        matrix, cached_count, computed_count = engine.embed_texts(payload.texts)
+    else:
+        raise HTTPException(status_code=400, detail="Either 'texts' or 'chunks' must be provided in request body.")
+
+    latency_ms = round((time.perf_counter() - start) * 1000, 2)
+    return EmbedResponse(
+        embeddings=matrix.tolist(),
+        model=engine.model_name,
+        dimension=engine.dimension,
+        latencyMs=latency_ms,
+        cachedCount=cached_count,
+        computedCount=computed_count
+    )
+
+@app.post("/search", response_model=SearchResponse)
+async def search_chunks(payload: SearchRequest):
+    if not payload.query or not payload.query.strip():
+        raise HTTPException(status_code=400, detail="Query cannot be empty.")
+    
+    if not payload.chunks:
+        raise HTTPException(status_code=400, detail="Chunks list cannot be empty.")
+
+    engine = EmbeddingEngine.get_instance()
+    try:
+        response = engine.search(
+            query=payload.query,
+            chunks=payload.chunks,
+            top_k=payload.topK,
+            strategy=payload.strategy
+        )
+        return response
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
+
+# Day 6 Retrieval Debugger & Question Generator Endpoints
 @app.post("/retrieval/query", response_model=RetrievalQueryResponse)
 async def retrieve_chunks(req: RetrievalQueryRequest):
     results, duration_ms = run_retrieval(

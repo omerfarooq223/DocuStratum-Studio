@@ -106,10 +106,52 @@ class ChunkModel(BaseModel):
     overlap: Optional[ChunkOverlap] = None
     continuations: Optional[List[ChunkContinuation]] = None
 
-# ----------------------------------------------------
-# Day 6 Retrieval & Evaluation Models
-# ----------------------------------------------------
+# Day 5 Embeddings & Vector Search Models
+class ModelStatusResponse(BaseModel):
+    status: Literal["ready", "loading", "unloaded", "error"] = "ready"
+    modelName: str = "all-MiniLM-L6-v2"
+    dimension: int = 384
+    device: str = "cpu"
+    cachedEmbeddingsCount: int = 0
+    isLocal: bool = True
 
+class EmbedRequest(BaseModel):
+    texts: Optional[List[str]] = None
+    chunks: Optional[List[ChunkModel]] = None
+    model: Optional[str] = None
+
+class EmbedResponse(BaseModel):
+    embeddings: List[List[float]]
+    model: str = "all-MiniLM-L6-v2"
+    dimension: int = 384
+    latencyMs: float
+    cachedCount: int = 0
+    computedCount: int = 0
+
+class RetrievalResultModel(BaseModel):
+    chunkId: str
+    score: float = Field(ge=-1.0, le=1.0)
+    rank: int = Field(ge=1)
+    strategy: ChunkingStrategy
+    headingPath: List[str] = Field(default_factory=list)
+    excerpt: str
+    sourceBlockIds: List[str] = Field(default_factory=list)
+
+class SearchRequest(BaseModel):
+    query: str = Field(min_length=1, max_length=2000)
+    chunks: List[ChunkModel] = Field(min_length=1)
+    topK: int = Field(default=5, ge=1, le=50)
+    strategy: Optional[ChunkingStrategy] = None
+
+class SearchResponse(BaseModel):
+    query: str
+    results: List[RetrievalResultModel]
+    latencyMs: float
+    model: str = "all-MiniLM-L6-v2"
+    dimension: int = 384
+    totalCandidates: int
+
+# Day 6 Retrieval Debugger & Evaluation Models
 class RetrievalQueryRequest(BaseModel):
     query: str
     strategy: ChunkingStrategy

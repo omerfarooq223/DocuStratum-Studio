@@ -18,6 +18,7 @@ import { ExtractionSummary } from './components/ExtractionSummary';
 import { BlockTree } from './components/BlockTree';
 import { CleanedMarkdownPreview } from './components/CleanedMarkdownPreview';
 import { ChunkComparison } from './components/ChunkComparison';
+import { RetrievalView } from './components/RetrievalView';
 import { RetrievalDebugger } from './components/RetrievalDebugger';
 import { EmptyState, RestrictedPageState, ErrorState } from './components/StatusViews';
 
@@ -40,13 +41,13 @@ export const App: React.FC = () => {
   const [activeMode, setActiveMode] = useState<CaptureMode | null>(null);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [restrictedUrl, setRestrictedUrl] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'blocks' | 'markdown' | 'chunks' | 'debugger'>('blocks');
+  const [activeTab, setActiveTab] = useState<'blocks' | 'markdown' | 'chunks' | 'retrieve' | 'debugger'>('blocks');
+  const [allChunks, setAllChunks] = useState<Chunk[]>(EMPTY_CHUNKS);
+  const [recursiveChunks, setRecursiveChunks] = useState<Chunk[]>(EMPTY_CHUNKS);
+  const [headingChunks, setHeadingChunks] = useState<Chunk[]>(EMPTY_CHUNKS);
   const [highlightedBlockIds, setHighlightedBlockIds] = useState<ReadonlySet<string>>(
     () => new Set(),
   );
-
-  const [recursiveChunks, setRecursiveChunks] = useState<Chunk[]>(EMPTY_CHUNKS);
-  const [headingChunks, setHeadingChunks] = useState<Chunk[]>(EMPTY_CHUNKS);
 
   // Check health of local FastAPI backend
   const checkHealth = async () => {
@@ -122,6 +123,7 @@ export const App: React.FC = () => {
     if (!captureResult || currentBlocks.length === 0) {
       setRecursiveChunks(EMPTY_CHUNKS);
       setHeadingChunks(EMPTY_CHUNKS);
+      setAllChunks(EMPTY_CHUNKS);
       return;
     }
 
@@ -135,7 +137,13 @@ export const App: React.FC = () => {
       if (cancelled) return;
       setRecursiveChunks(res.recursive);
       setHeadingChunks(res.headingAware);
-    }).catch(() => undefined);
+      setAllChunks([...res.recursive, ...res.headingAware]);
+    }).catch(() => {
+      if (cancelled) return;
+      setRecursiveChunks(EMPTY_CHUNKS);
+      setHeadingChunks(EMPTY_CHUNKS);
+      setAllChunks(EMPTY_CHUNKS);
+    });
 
     return () => {
       cancelled = true;
@@ -240,6 +248,12 @@ export const App: React.FC = () => {
   const metrics = useMemo(() => calculateExtractionMetrics(currentBlocks), [currentBlocks]);
   const cleanedMarkdown = useMemo(() => generateCleanedMarkdown(currentBlocks), [currentBlocks]);
 
+  // Derive heading paths for query suggestions
+  const headingPaths = useMemo(
+    () => currentBlocks.filter((b) => b.included !== false && b.headingPath?.length).map((b) => b.headingPath),
+    [currentBlocks]
+  );
+
   return (
     <div className="container">
       {/* Extension Header */}
@@ -316,10 +330,16 @@ export const App: React.FC = () => {
               Compare Chunks
             </button>
             <button
+              className={`tab-btn ${activeTab === 'retrieve' ? 'active' : ''}`}
+              onClick={() => setActiveTab('retrieve')}
+            >
+              Semantic Search ({allChunks.length})
+            </button>
+            <button
               className={`tab-btn ${activeTab === 'debugger' ? 'active' : ''}`}
               onClick={() => setActiveTab('debugger')}
             >
-              🎯 Retrieval Debugger
+              🎯 Debugger
             </button>
           </nav>
 
@@ -344,6 +364,13 @@ export const App: React.FC = () => {
               blocks={currentBlocks}
               sourceNamespace={captureResult.capture.id}
               onHighlightBlocks={handleHighlightBlocks}
+            />
+          ) : activeTab === 'retrieve' ? (
+            <RetrievalView
+              chunks={allChunks}
+              headingPaths={headingPaths}
+              onInspectBlock={(blockId) => handleHighlightBlocks([blockId])}
+              onInspectChunk={() => setActiveTab('chunks')}
             />
           ) : (
             <RetrievalDebugger
