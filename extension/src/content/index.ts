@@ -1,4 +1,6 @@
 import { capturePage, captureSelection, ElementPicker } from '../capture';
+import { highlightTargetInDom, removeCurrentHighlights } from './highlighter';
+import { HighlightTarget } from '../../../packages/schema';
 
 const environment = { document };
 let activePicker: ElementPicker | undefined;
@@ -7,7 +9,7 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-chrome.runtime.onMessage.addListener((request: { action?: string }, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((request: { action?: string; target?: HighlightTarget }, _sender, sendResponse) => {
   if (request.action === 'PING_CONTENT_SCRIPT') {
     sendResponse({ ok: true, status: 'active', url: window.location.href, title: document.title });
     return false;
@@ -25,6 +27,22 @@ chrome.runtime.onMessage.addListener((request: { action?: string }, _sender, sen
       .then((result) => sendResponse({ ok: true, result }))
       .catch((error: unknown) => sendResponse({ ok: false, error: errorMessage(error) }));
     return true;
+  }
+
+  if (request.action === 'HIGHLIGHT_SOURCE_BLOCK' && request.target) {
+    try {
+      const response = highlightTargetInDom(request.target);
+      sendResponse(response);
+    } catch (err) {
+      sendResponse({ ok: false, status: 'not_found', reason: errorMessage(err) });
+    }
+    return false;
+  }
+
+  if (request.action === 'CLEAR_HIGHLIGHTS') {
+    removeCurrentHighlights();
+    sendResponse({ ok: true });
+    return false;
   }
 
   if (request.action === 'START_ELEMENT_PICKER') {

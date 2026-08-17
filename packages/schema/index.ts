@@ -108,7 +108,61 @@ export interface RetrievalResult {
   strategy: ChunkingStrategy;
   headingPath: string[];
   excerpt: string;
-  sourceBlockIds?: string[];
+  sourceBlockIds: string[];
+}
+
+// ----------------------------------------------------
+// Day 6 Evaluation & Highlight Models
+// ----------------------------------------------------
+
+export type QuestionStatus = 'draft' | 'curated';
+
+export interface TestQuestion {
+  id: string;
+  query: string;
+  expectedBlockId?: string;
+  notes?: string;
+  status: QuestionStatus;
+  generatedFromBlockId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RetrievalRunConfig {
+  topK: number;
+  strategy: ChunkingStrategy;
+  captureId: string;
+}
+
+export interface RetrievalEvaluationResult {
+  id: string;
+  questionId: string;
+  query: string;
+  expectedBlockId?: string;
+  strategy: ChunkingStrategy;
+  topK: number;
+  measuredLatencyMs: number;
+  results: RetrievalResult[];
+  hitAt1?: boolean;
+  hitAt3?: boolean;
+  hitAt5?: boolean;
+  reciprocalRank?: number;
+  timestamp: string;
+  notes?: string;
+}
+
+export interface HighlightTarget {
+  blockId: string;
+  cssSelector: string;
+  textQuote: TextQuote;
+  nodePath?: string;
+}
+
+export interface HighlightResponse {
+  ok: boolean;
+  status: 'highlighted' | 'stale' | 'not_found';
+  reason?: string;
+  matchedText?: string;
 }
 
 export interface ManifestFileRef {

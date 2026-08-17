@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   CaptureResult,
   Block,
+  Chunk,
   CaptureMode,
   HealthResponse,
   VersionResponse,
@@ -10,16 +11,19 @@ import { generateCleanedMarkdown } from './utils/markdown';
 import { calculateExtractionMetrics } from './utils/metrics';
 import { saveDraftCapture, loadDraftCapture, clearDraftCapture } from './utils/storage';
 import { requestCapture, RestrictedTabError } from './utils/captureClient';
+import { chunkBothStrategies } from '../chunking';
 
 import { CaptureControls } from './components/CaptureControls';
 import { ExtractionSummary } from './components/ExtractionSummary';
 import { BlockTree } from './components/BlockTree';
 import { CleanedMarkdownPreview } from './components/CleanedMarkdownPreview';
 import { ChunkComparison } from './components/ChunkComparison';
+import { RetrievalDebugger } from './components/RetrievalDebugger';
 import { EmptyState, RestrictedPageState, ErrorState } from './components/StatusViews';
 
 const SERVICE_URL = 'http://127.0.0.1:8000';
 const EMPTY_BLOCKS: Block[] = [];
+const EMPTY_CHUNKS: Chunk[] = [];
 
 export const App: React.FC = () => {
   // Service health state
@@ -36,10 +40,13 @@ export const App: React.FC = () => {
   const [activeMode, setActiveMode] = useState<CaptureMode | null>(null);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [restrictedUrl, setRestrictedUrl] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'blocks' | 'markdown' | 'chunks'>('blocks');
+  const [activeTab, setActiveTab] = useState<'blocks' | 'markdown' | 'chunks' | 'debugger'>('blocks');
   const [highlightedBlockIds, setHighlightedBlockIds] = useState<ReadonlySet<string>>(
     () => new Set(),
   );
+
+  const [recursiveChunks, setRecursiveChunks] = useState<Chunk[]>(EMPTY_CHUNKS);
+  const [headingChunks, setHeadingChunks] = useState<Chunk[]>(EMPTY_CHUNKS);
 
   // Check health of local FastAPI backend
   const checkHealth = async () => {
@@ -107,6 +114,33 @@ export const App: React.FC = () => {
     }
     return undefined;
   }, []);
+
+  const currentBlocks = captureResult?.blocks ?? EMPTY_BLOCKS;
+
+  // Keep chunks updated whenever capture blocks change
+  useEffect(() => {
+    if (!captureResult || currentBlocks.length === 0) {
+      setRecursiveChunks(EMPTY_CHUNKS);
+      setHeadingChunks(EMPTY_CHUNKS);
+      return;
+    }
+
+    let cancelled = false;
+    void chunkBothStrategies(
+      currentBlocks,
+      captureResult.capture.id,
+      { maxCharacters: 700, overlapCharacters: 80 },
+      { maxCharacters: 700 }
+    ).then((res) => {
+      if (cancelled) return;
+      setRecursiveChunks(res.recursive);
+      setHeadingChunks(res.headingAware);
+    }).catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [captureResult, currentBlocks]);
 
   // Initiate a new capture
   const handleStartCapture = async (mode: CaptureMode) => {
@@ -203,7 +237,6 @@ export const App: React.FC = () => {
   }, [activeTab, highlightedBlockIds]);
 
   // Metrics & Cleaned Markdown derived values
-  const currentBlocks = captureResult?.blocks ?? EMPTY_BLOCKS;
   const metrics = useMemo(() => calculateExtractionMetrics(currentBlocks), [currentBlocks]);
   const cleanedMarkdown = useMemo(() => generateCleanedMarkdown(currentBlocks), [currentBlocks]);
 
@@ -268,7 +301,7 @@ export const App: React.FC = () => {
               className={`tab-btn ${activeTab === 'blocks' ? 'active' : ''}`}
               onClick={() => setActiveTab('blocks')}
             >
-              Block Tree ({metrics.includedBlocks}/{metrics.totalBlocks})
+              Blocks ({metrics.includedBlocks}/{metrics.totalBlocks})
             </button>
             <button
               className={`tab-btn ${activeTab === 'markdown' ? 'active' : ''}`}
@@ -281,6 +314,12 @@ export const App: React.FC = () => {
               onClick={() => setActiveTab('chunks')}
             >
               Compare Chunks
+            </button>
+            <button
+              className={`tab-btn ${activeTab === 'debugger' ? 'active' : ''}`}
+              onClick={() => setActiveTab('debugger')}
+            >
+              🎯 Retrieval Debugger
             </button>
           </nav>
 
@@ -300,11 +339,17 @@ export const App: React.FC = () => {
               includedCount={metrics.includedBlocks}
               totalCount={metrics.totalBlocks}
             />
-          ) : (
+          ) : activeTab === 'chunks' ? (
             <ChunkComparison
               blocks={currentBlocks}
               sourceNamespace={captureResult.capture.id}
               onHighlightBlocks={handleHighlightBlocks}
+            />
+          ) : (
+            <RetrievalDebugger
+              captureResult={captureResult}
+              recursiveChunks={recursiveChunks}
+              headingChunks={headingChunks}
             />
           )}
         </>

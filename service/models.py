@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 CaptureMode = Literal["selection", "element", "page"]
 BlockType = Literal["heading", "paragraph", "list", "code", "table", "callout"]
 ChunkingStrategy = Literal["recursive", "heading_aware"]
+QuestionStatus = Literal["draft", "curated"]
 
 class HealthResponse(BaseModel):
     status: Literal["healthy", "degraded", "unhealthy"] = "healthy"
@@ -104,3 +105,42 @@ class ChunkModel(BaseModel):
     contentHash: str
     overlap: Optional[ChunkOverlap] = None
     continuations: Optional[List[ChunkContinuation]] = None
+
+# ----------------------------------------------------
+# Day 6 Retrieval & Evaluation Models
+# ----------------------------------------------------
+
+class RetrievalQueryRequest(BaseModel):
+    query: str
+    strategy: ChunkingStrategy
+    topK: int = Field(default=5, ge=1, le=20)
+    chunks: List[ChunkModel]
+
+class RetrievalResultItem(BaseModel):
+    chunkId: str
+    score: float
+    rank: int
+    strategy: ChunkingStrategy
+    headingPath: List[str]
+    excerpt: str
+    sourceBlockIds: List[str]
+
+class RetrievalQueryResponse(BaseModel):
+    results: List[RetrievalResultItem]
+    executionTimeMs: float
+
+class DraftQuestionsRequest(BaseModel):
+    blocks: List[BlockModel]
+
+class TestQuestionModel(BaseModel):
+    id: str
+    query: str
+    expectedBlockId: Optional[str] = None
+    notes: Optional[str] = None
+    status: QuestionStatus = "draft"
+    generatedFromBlockId: Optional[str] = None
+    createdAt: str
+    updatedAt: str
+
+class DraftQuestionsResponse(BaseModel):
+    questions: List[TestQuestionModel]

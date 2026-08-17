@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EvaluationDataset",
+  "type": "object",
+  "required": ["formatVersion", "createdAt", "questions"],
+  "properties": {
+    "formatVersion": { "type": "string", "default": "1.0.0" },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "captureId": { "type": "string" },
+    "questions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "query", "status", "createdAt", "updatedAt"],
+        "properties": {
+          "id": { "type": "string" },
+          "query": { "type": "string" },
+          "expectedBlockId": { "type": "string" },
+          "notes": { "type": "string" },
+          "status": { "type": "string", "enum": ["draft", "curated"] },
+          "generatedFromBlockId": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      }
+    }
+  }
+}

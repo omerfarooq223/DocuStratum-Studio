@@ -1,0 +1,29 @@
+[
+  {
+    "id": "fixture_q1",
+    "query": "What are the token limits for heading-aware chunking?",
+    "expectedBlockId": "blk_002",
+    "notes": "Compares heading-aware boundary preservation vs recursive split",
+    "status": "curated",
+    "createdAt": "2026-08-17T00:00:00.000Z",
+    "updatedAt": "2026-08-17T00:00:00.000Z"
+  },
+  {
+    "id": "fixture_q2",
+    "query": "How is overlap handled between adjacent chunks?",
+    "expectedBlockId": "blk_004",
+    "notes": "Verifies that sliding window overlap points to original source spans",
+    "status": "curated",
+    "createdAt": "2026-08-17T00:00:00.000Z",
+    "updatedAt": "2026-08-17T00:00:00.000Z"
+  },
+  {
+    "id": "fixture_q3",
+    "query": "What happens when live DOM content has changed?",
+    "expectedBlockId": "blk_006",
+    "notes": "Tests stale source fallback to saved block modal preview",
+    "status": "curated",
+    "createdAt": "2026-08-17T00:00:00.000Z",
+    "updatedAt": "2026-08-17T00:00:00.000Z"
+  }
+]

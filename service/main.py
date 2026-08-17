@@ -3,8 +3,18 @@ from datetime import datetime, timezone
 from fastapi import FastAPI, Request, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from service.models import HealthResponse, VersionResponse, ErrorResponse, ErrorDetail
-
+from service.models import (
+    HealthResponse,
+    VersionResponse,
+    ErrorResponse,
+    ErrorDetail,
+    RetrievalQueryRequest,
+    RetrievalQueryResponse,
+    DraftQuestionsRequest,
+    DraftQuestionsResponse,
+)
+from service.retrieval import run_retrieval
+from service.question_generator import generate_draft_questions_from_blocks
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 app = FastAPI(
@@ -47,7 +57,6 @@ async def starlette_http_exception_handler(request: Request, exc: StarletteHTTPE
         headers={"X-Request-ID": request_id}
     )
 
-
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
@@ -80,3 +89,21 @@ async def get_health(request: Request):
 @app.get("/version", response_model=VersionResponse)
 async def get_version():
     return VersionResponse()
+
+@app.post("/retrieval/query", response_model=RetrievalQueryResponse)
+async def retrieve_chunks(req: RetrievalQueryRequest):
+    results, duration_ms = run_retrieval(
+        query=req.query,
+        chunks=req.chunks,
+        strategy=req.strategy,
+        top_k=req.topK
+    )
+    return RetrievalQueryResponse(
+        results=results,
+        executionTimeMs=duration_ms
+    )
+
+@app.post("/evaluation/draft-questions", response_model=DraftQuestionsResponse)
+async def draft_questions(req: DraftQuestionsRequest):
+    drafts = generate_draft_questions_from_blocks(req.blocks)
+    return DraftQuestionsResponse(questions=drafts)
