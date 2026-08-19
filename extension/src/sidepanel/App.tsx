@@ -20,6 +20,7 @@ import { CleanedMarkdownPreview } from './components/CleanedMarkdownPreview';
 import { ChunkComparison } from './components/ChunkComparison';
 import { RetrievalView } from './components/RetrievalView';
 import { RetrievalDebugger } from './components/RetrievalDebugger';
+import { ExportPackagePanel } from './components/ExportPackagePanel';
 import { EmptyState, RestrictedPageState, ErrorState } from './components/StatusViews';
 
 const SERVICE_URL = 'http://127.0.0.1:8000';
@@ -41,7 +42,7 @@ export const App: React.FC = () => {
   const [activeMode, setActiveMode] = useState<CaptureMode | null>(null);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [restrictedUrl, setRestrictedUrl] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'blocks' | 'markdown' | 'chunks' | 'retrieve' | 'debugger'>('blocks');
+  const [activeTab, setActiveTab] = useState<'blocks' | 'markdown' | 'chunks' | 'retrieve' | 'debugger' | 'export'>('blocks');
   const [allChunks, setAllChunks] = useState<Chunk[]>(EMPTY_CHUNKS);
   const [recursiveChunks, setRecursiveChunks] = useState<Chunk[]>(EMPTY_CHUNKS);
   const [headingChunks, setHeadingChunks] = useState<Chunk[]>(EMPTY_CHUNKS);
@@ -347,6 +348,12 @@ export const App: React.FC = () => {
             >
               🎯 Debugger
             </button>
+            <button
+              className={`tab-btn ${activeTab === 'export' ? 'active' : ''}`}
+              onClick={() => setActiveTab('export')}
+            >
+              📦 Export
+            </button>
           </nav>
 
           {activeTab === 'blocks' ? (
@@ -379,11 +386,16 @@ export const App: React.FC = () => {
               onInspectBlock={(blockId) => handleHighlightBlocks([blockId])}
               onInspectChunk={() => setActiveTab('chunks')}
             />
-          ) : (
+          ) : activeTab === 'debugger' ? (
             <RetrievalDebugger
               captureResult={captureResult}
               recursiveChunks={recursiveChunks}
               headingChunks={headingChunks}
+            />
+          ) : (
+            <ExportPackagePanel
+              captureResult={captureResult}
+              chunks={allChunks}
             />
           )}
         </>

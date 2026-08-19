@@ -2,7 +2,7 @@ import uuid
 import time
 import json
 from datetime import datetime, timezone
-from fastapi import FastAPI, Request, HTTPException, status
+from fastapi import FastAPI, Request, HTTPException, status, UploadFile, File, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.exceptions import RequestValidationError
@@ -25,11 +25,14 @@ from service.models import (
     LLMProviderStatusResponse,
     GroundedAnswerRequest,
     GroundedAnswerResponse,
+    ExportPackageRequest,
+    PackageValidationReport,
 )
 from service.embeddings import EmbeddingEngine
 from service.retrieval import run_retrieval
 from service.question_generator import generate_draft_questions_from_blocks
 from service.llm import get_llm_provider
+from service.packager import PackageExporter, validate_package_zip
 
 
 app = FastAPI(
@@ -252,4 +255,53 @@ async def stream_grounded_answer(req: GroundedAnswerRequest):
             "X-Accel-Buffering": "no",
         }
     )
+
+# Day 8 Portable RAG Package Endpoints
+@app.post("/export/package")
+async def export_rag_package(req: ExportPackageRequest):
+    if not req.captureResult or not req.captureResult.blocks:
+        raise HTTPException(status_code=400, detail="Cannot export package with empty capture blocks.")
+    if not req.chunks:
+        raise HTTPException(status_code=400, detail="Cannot export package with zero chunks.")
+
+    try:
+        zip_bytes, manifest = PackageExporter.build_package_zip(
+            capture_result=req.captureResult,
+            chunks=req.chunks,
+            questions=req.questions,
+            retrieval_results=req.retrievalResults,
+            answers=req.answers,
+            generation_metadata=req.generationMetadata,
+        )
+
+        url_slug = req.captureResult.capture.title.lower().replace(" ", "-")[:30]
+        timestamp_slug = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        filename = f"webrag-package-{url_slug}-{timestamp_slug}.zip"
+
+        return Response(
+            content=zip_bytes,
+            media_type="application/zip",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "X-Manifest-Format-Version": manifest.formatVersion,
+                "X-Total-Blocks": str(len(req.captureResult.blocks)),
+                "X-Total-Chunks": str(len(req.chunks)),
+            }
+        )
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Package export failed: {str(e)}")
+
+
+@app.post("/package/validate", response_model=PackageValidationReport)
+async def validate_rag_package(request: Request):
+    try:
+        content = await request.body()
+        if not content:
+            raise HTTPException(status_code=400, detail="Uploaded package ZIP file is empty.")
+        report = validate_package_zip(content)
+        return report
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to validate package ZIP: {str(e)}")
 

@@ -175,6 +175,7 @@ class DraftQuestionsRequest(BaseModel):
     blocks: List[BlockModel]
 
 class TestQuestionModel(BaseModel):
+    __test__ = False
     id: str
     query: str
     expectedBlockId: Optional[str] = None
@@ -238,4 +239,100 @@ class AnswerStreamEventModel(BaseModel):
     latencyMs: Optional[float] = None
     promptVersion: Optional[str] = None
     error: Optional[str] = None
+
+# Day 8 Portable RAG Package Models
+class ManifestFileEntry(BaseModel):
+    path: str
+    sha256: str
+    bytes: int = Field(ge=0)
+    recordCount: Optional[int] = Field(default=None, ge=0)
+
+class ChunkerRecursiveSettings(BaseModel):
+    maxCharacters: int = 700
+    overlapCharacters: int = 80
+
+class ChunkerHeadingAwareSettings(BaseModel):
+    maxCharacters: int = 700
+
+class ChunkerSettingsMetadata(BaseModel):
+    recursive: Optional[ChunkerRecursiveSettings] = None
+    headingAware: Optional[ChunkerHeadingAwareSettings] = None
+
+class EmbeddingMetadata(BaseModel):
+    modelName: str = "all-MiniLM-L6-v2"
+    dimension: int = 384
+    metric: Literal["cosine", "dot", "euclidean"] = "cosine"
+    normalized: bool = True
+    instructions: Optional[str] = (
+        "Re-embed chunks using the specified model and metric to generate dense retrieval vectors."
+    )
+
+class GenerationMetadata(BaseModel):
+    provider: str = "groq"
+    model: str = "llama-3.3-70b-versatile"
+    promptVersion: str = "v1.0.0"
+    temperature: Optional[float] = 0.1
+
+class SourceIdentityMetadata(BaseModel):
+    url: str
+    canonicalUrl: Optional[str] = None
+    title: str
+    mode: CaptureMode
+    captureTime: str
+    extractorVersion: str = "1.0.0"
+    captureHash: str
+
+class PackageManifest(BaseModel):
+    formatVersion: str = "1.0.0"
+    createdAt: str
+    sourceIdentity: SourceIdentityMetadata
+    chunkerSettings: ChunkerSettingsMetadata
+    embeddingMetadata: EmbeddingMetadata
+    generationMetadata: Optional[GenerationMetadata] = None
+    promptVersion: Optional[str] = "v1.0.0"
+    licenseNote: str = (
+        "Content captured from user-specified source. Ensure compliance with origin license and terms."
+    )
+    files: List[ManifestFileEntry] = Field(default_factory=list)
+
+class RetrievalEvaluationResultModel(BaseModel):
+    id: str
+    questionId: str
+    query: str
+    expectedBlockId: Optional[str] = None
+    strategy: ChunkingStrategy
+    topK: int = Field(default=5, ge=1, le=20)
+    measuredLatencyMs: float
+    results: List[RetrievalResultModel]
+    hitAt1: Optional[bool] = None
+    hitAt3: Optional[bool] = None
+    hitAt5: Optional[bool] = None
+    reciprocalRank: Optional[float] = None
+    timestamp: str
+    notes: Optional[str] = None
+
+class ExportPackageRequest(BaseModel):
+    captureResult: CaptureResultModel
+    chunks: List[ChunkModel] = Field(default_factory=list)
+    questions: Optional[List[TestQuestionModel]] = Field(default_factory=list)
+    retrievalResults: Optional[List[RetrievalEvaluationResultModel]] = Field(default_factory=list)
+    answers: Optional[List[GroundedAnswerResponse]] = Field(default_factory=list)
+    generationMetadata: Optional[GenerationMetadata] = None
+
+class PackageValidationIssue(BaseModel):
+    severity: Literal["error", "warning"] = "error"
+    file: Optional[str] = None
+    code: str
+    message: str
+
+class PackageValidationReport(BaseModel):
+    valid: bool
+    formatVersion: Optional[str] = None
+    totalFiles: int = 0
+    totalBlocks: int = 0
+    totalChunks: int = 0
+    totalQuestions: int = 0
+    totalAnswers: int = 0
+    issues: List[PackageValidationIssue] = Field(default_factory=list)
+    manifest: Optional[PackageManifest] = None
 

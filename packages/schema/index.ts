@@ -295,5 +295,86 @@ export interface AnswerStreamEvent {
   promptVersion?: string;
   error?: string;
 }
+// ----------------------------------------------------
+// Day 8 Portable RAG Package Models
+// ----------------------------------------------------
 
+export interface ManifestFileEntry {
+  path: string;
+  sha256: string;
+  bytes: number;
+  recordCount?: number;
+}
 
+export interface ChunkerSettingsMetadata {
+  recursive?: {
+    maxCharacters: number;
+    overlapCharacters: number;
+  };
+  headingAware?: {
+    maxCharacters: number;
+  };
+}
+
+export interface EmbeddingMetadata {
+  modelName: string;
+  dimension: number;
+  metric: 'cosine' | 'dot' | 'euclidean';
+  normalized: boolean;
+  instructions?: string;
+}
+
+export interface GenerationMetadata {
+  provider: string;
+  model: string;
+  promptVersion: string;
+  temperature?: number;
+}
+
+export interface PackageManifest {
+  formatVersion: string;
+  createdAt: string;
+  sourceIdentity: {
+    url: string;
+    canonicalUrl?: string;
+    title: string;
+    mode: CaptureMode;
+    captureTime: string;
+    extractorVersion: string;
+    captureHash: string;
+  };
+  chunkerSettings: ChunkerSettingsMetadata;
+  embeddingMetadata: EmbeddingMetadata;
+  generationMetadata?: GenerationMetadata;
+  promptVersion?: string;
+  licenseNote: string;
+  files: ManifestFileEntry[];
+}
+
+export interface ExportPackageRequest {
+  captureResult: CaptureResult;
+  chunks: Chunk[];
+  questions?: TestQuestion[];
+  retrievalResults?: RetrievalEvaluationResult[];
+  answers?: GroundedAnswerResponse[];
+  generationMetadata?: GenerationMetadata;
+}
+
+export interface PackageValidationIssue {
+  severity: 'error' | 'warning';
+  file?: string;
+  code: string;
+  message: string;
+}
+
+export interface PackageValidationReport {
+  valid: boolean;
+  formatVersion?: string;
+  totalFiles: number;
+  totalBlocks: number;
+  totalChunks: number;
+  totalQuestions: number;
+  totalAnswers: number;
+  issues: PackageValidationIssue[];
+  manifest?: PackageManifest;
+}
