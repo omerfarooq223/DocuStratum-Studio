@@ -30,6 +30,12 @@ WebRAG Studio is a local-first Chrome extension and companion service for determ
 - **Normalized Cosine Similarity**: Fast in-memory dot-product search with deterministic tie-breaking for reproducible rankings.
 - **Top-5 Visual Retrieval**: Dedicated search interface displaying rank badges, similarity score percentage bars, strategy pills, heading breadcrumbs, and clickable source block tags.
 
+### 5. Grounded Answers, Evaluation, and Portable Export
+- **Evidence-Only Answers**: Optional Groq/OpenAI-compatible generation receives only retrieved chunks, rejects unknown citations, and explicitly reports insufficient evidence.
+- **Retrieval Debugger**: Curated questions, expected-block labels, hit@k, reciprocal rank, latency, live-page highlighting, and stale-source fallback.
+- **Portable RAG ZIP**: Exports checksummed Markdown, blocks, chunks, evaluation records, answers, manifest metadata, and a dependency-light Python loader. Dense vectors and credentials are intentionally omitted.
+- **Failure-Safe by Default**: Capture, chunking, retrieval, evaluation, highlighting, and export remain available when the optional LLM is disabled or offline.
+
 ---
 
 ## Architecture
@@ -111,6 +117,13 @@ WebRAG/
    curl http://127.0.0.1:8000/health
    ```
 
+5. Optional grounded answers: set the key only in the service process, then restart it:
+   ```bash
+   export GROQ_API_KEY="your-key"
+   uvicorn service.main:app --host 127.0.0.1 --port 8000
+   ```
+   The key is never sent to the extension, browser storage, logs, or exported packages. Without it, the full deterministic workflow remains available.
+
 ---
 
 ### Step 2: Build and Load the Chrome Extension
@@ -157,7 +170,20 @@ cd extension && npm run test:chunking
 
 # Retrieval-specific tests
 cd extension && npm run test:retrieval
+
+# Day 9 golden path, required to pass three consecutive times
+npm run smoke:day9
 ```
+
+## 60–90 Second Demo
+
+1. Start the service, load the unpacked extension, and open `fixtures/demo-fixture.html`.
+2. Capture the full page and point out that the form and secret values were excluded.
+3. Compare recursive and heading-aware chunks.
+4. Search for `How long is a token valid?`, open the top result, and show the exact source highlight.
+5. Export and validate the portable ZIP. If Groq is configured, generate a grounded answer and open its citation.
+
+The deterministic capture-to-export path is the no-network fallback. See [Day 9 reliability notes](docs/day-9-reliability-security-polish.md) for the adversarial and fresh-start checklists.
 
 ---
 
@@ -172,6 +198,13 @@ cd extension && npm run test:retrieval
 | `/model/status` | `GET` | Embedding model readiness, device (`mps`/`cpu`), dimension (`384`), and cache stats |
 | `/embed` | `POST` | Generate normalized embeddings for chunks or raw texts |
 | `/search` | `POST` | Execute local cosine similarity search across candidate chunks |
+| `/retrieval/query` | `POST` | Run a measured debugger retrieval query |
+| `/evaluation/draft-questions` | `POST` | Create editable local question drafts from selected blocks |
+| `/llm/status` | `GET` | Report optional provider readiness without exposing credentials |
+| `/llm/answer` | `POST` | Generate a citation-validated grounded answer |
+| `/llm/answer/stream` | `POST` | Stream a grounded answer with recoverable error events |
+| `/export/package` | `POST` | Build a validated portable RAG ZIP |
+| `/package/validate` | `POST` | Verify ZIP checksums and referential integrity |
 
 ---
 
@@ -180,6 +213,32 @@ cd extension && npm run test:retrieval
 - **No Remote Network Requests**: Content extraction, chunking, embedding generation, and similarity ranking execute entirely on your machine.
 - **Sensitive Data Exclusion**: Form inputs with passwords, auth tokens, hidden fields, and scripts are strictly excluded at DOM traversal time.
 - **Isolated Storage**: Capture drafts and evaluation states reside solely in browser local storage and the local companion process.
+- **Least-Privilege Capture**: Page code is injected only after an explicit capture action under `activeTab`; there is no persistent all-sites content script.
+- **Bounded Local API**: Requests are capped at 5 MB, with explicit block, chunk, text, and LLM-context limits.
+- **Metadata-Only Logs**: Service logs record request IDs, event names, status, and duration—not page text, prompts, authorization headers, or API keys.
+
+## Portable Package
+
+The ZIP contains `manifest.json`, cleaned Markdown, blocks/chunks JSONL, evaluation JSONL, answer JSONL, and a package README. Validate and inspect it with:
+
+```bash
+python3 -m service.examples.similarity_search_example path/to/webrag-package.zip
+```
+
+The exact format and zero-dependency loader are documented in [Day 8 portable package](docs/day-8-portable-rag-package.md).
+
+## Troubleshooting
+
+- **Header shows OFFLINE**: Confirm the service is listening on `127.0.0.1:8000`, then click the status badge to retry.
+- **Capture cannot start**: Browser-internal pages and the Chrome Web Store are restricted. Open an ordinary `http`, `https`, or local fixture page and retry.
+- **Model is not ready**: Keep the service online for the first local model download. Once cached, retrieval works without network access.
+- **Groq action is unavailable**: Set `GROQ_API_KEY` in the service environment. Do not place it in extension files or browser storage.
+- **Request is too large**: Capture a smaller element or exclude blocks. The service caps request bodies at 5 MB, captures at 1,000 blocks, and chunk sets at 2,000.
+- **Source highlight is stale**: The page changed after capture. Use the saved block preview or recapture the page.
+
+## Known Limitations
+
+WebRAG Studio intentionally supports one ordinary HTML page at a time, English text, and simple tables. It does not crawl sites or handle PDFs, OCR, canvases, shadow DOM, or authenticated automation. Retrieval is in-memory and sized for a single-page portfolio demo. Optional LLM latency depends on the provider and network; local retrieval timing is reported separately.
 
 ---
 

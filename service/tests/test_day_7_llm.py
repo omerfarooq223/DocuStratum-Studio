@@ -164,6 +164,24 @@ async def test_groq_provider_rate_limit_and_auth_error_handling():
             await provider.generate_answer("test query", chunks)
         assert "429" in str(exc_info.value) or "rate limit" in str(exc_info.value).lower()
 
+@pytest.mark.asyncio
+async def test_groq_provider_does_not_echo_upstream_response_body():
+    chunks = [ChunkModel(**make_test_chunk("chk_001", "Sample text", "blk_1"))]
+    secret_response = "UPSTREAM_PAGE_OR_PROMPT_SECRET"
+
+    with patch("httpx.AsyncClient.post") as mock_post:
+        mock_response = AsyncMock()
+        mock_response.status_code = 418
+        mock_response.text = secret_response
+        mock_post.return_value = mock_response
+
+        provider = GroqProvider(api_key="configured_test_key")
+        with pytest.raises(RuntimeError) as exc_info:
+            await provider.generate_answer("test query", chunks)
+
+    assert "418" in str(exc_info.value)
+    assert secret_response not in str(exc_info.value)
+
 def test_streaming_endpoint():
     chunks = [
         make_test_chunk("chk_001", "Tokens expire after 3600 seconds.", "blk_1"),

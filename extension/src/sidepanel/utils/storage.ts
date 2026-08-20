@@ -7,6 +7,24 @@ function isChromeStorageAvailable(): boolean {
   return typeof chrome !== 'undefined' && Boolean(chrome.storage?.local);
 }
 
+function isValidCaptureResult(value: unknown): value is CaptureResult {
+  if (!value || typeof value !== 'object') return false;
+  const candidate = value as Partial<CaptureResult>;
+  return Boolean(
+    candidate.capture &&
+      typeof candidate.capture.id === 'string' &&
+      typeof candidate.capture.url === 'string' &&
+      Array.isArray(candidate.blocks) &&
+      candidate.blocks.every(
+        (block) =>
+          block &&
+          typeof block.id === 'string' &&
+          typeof block.content === 'string' &&
+          block.sourceAnchor?.blockId === block.id,
+      ),
+  );
+}
+
 function getStorageBackend() {
   if (typeof window !== 'undefined' && window.localStorage) {
     try {
@@ -30,13 +48,12 @@ function getStorageBackend() {
  */
 export async function saveDraftCapture(result: CaptureResult): Promise<void> {
   if (isChromeStorageAvailable()) {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       chrome.storage.local.set({ [STORAGE_KEY]: result }, () => {
         if (chrome.runtime.lastError) {
-          reject(chrome.runtime.lastError);
-        } else {
-          resolve();
+          console.warn('[WebRAG Storage] Draft could not be saved locally.');
         }
+        resolve();
       });
     });
   }
@@ -59,7 +76,8 @@ export async function loadDraftCapture(): Promise<CaptureResult | null> {
         if (chrome.runtime.lastError || !items[STORAGE_KEY]) {
           resolve(null);
         } else {
-          resolve(items[STORAGE_KEY] as CaptureResult);
+          const stored = items[STORAGE_KEY];
+          resolve(isValidCaptureResult(stored) ? stored : null);
         }
       });
     });
@@ -68,7 +86,8 @@ export async function loadDraftCapture(): Promise<CaptureResult | null> {
   try {
     const backend = getStorageBackend();
     const raw = backend.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as CaptureResult) : null;
+    const parsed: unknown = raw ? JSON.parse(raw) : null;
+    return isValidCaptureResult(parsed) ? parsed : null;
   } catch {
     return null;
   }

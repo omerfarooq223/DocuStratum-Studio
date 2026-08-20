@@ -40,6 +40,7 @@ export const App: React.FC = () => {
     'idle' | 'capturing' | 'success' | 'error' | 'restricted'
   >('idle');
   const [activeMode, setActiveMode] = useState<CaptureMode | null>(null);
+  const [failedMode, setFailedMode] = useState<CaptureMode | null>(null);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [restrictedUrl, setRestrictedUrl] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'blocks' | 'markdown' | 'chunks' | 'retrieve' | 'debugger' | 'export'>('blocks');
@@ -157,6 +158,7 @@ export const App: React.FC = () => {
     setCaptureStatus('capturing');
     setErrorDetails(null);
     setRestrictedUrl(null);
+    setFailedMode(null);
 
     try {
       const result = await requestCapture(mode);
@@ -175,6 +177,7 @@ export const App: React.FC = () => {
       } else {
         setCaptureStatus('error');
         setErrorDetails(err.message || 'Capture failed.');
+        setFailedMode(mode);
       }
       setActiveMode(null);
     }
@@ -224,6 +227,7 @@ export const App: React.FC = () => {
     setCaptureStatus('idle');
     setErrorDetails(null);
     setRestrictedUrl(null);
+    setFailedMode(null);
     setHighlightedBlockIds(new Set());
   };
 
@@ -301,7 +305,7 @@ export const App: React.FC = () => {
       {captureStatus === 'error' && errorDetails && (
         <ErrorState
           message={errorDetails}
-          onRetry={() => activeMode && handleStartCapture(activeMode)}
+          onRetry={() => failedMode && handleStartCapture(failedMode)}
           onClear={handleClearDraft}
         />
       )}

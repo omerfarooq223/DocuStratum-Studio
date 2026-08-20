@@ -126,7 +126,7 @@ class GroqProvider(LLMProvider):
             elif response.status_code >= 500:
                 raise RuntimeError(f"Groq upstream service error (HTTP {response.status_code}). Please try again later.")
             elif response.status_code != 200:
-                raise RuntimeError(f"Groq API error ({response.status_code}): {response.text}")
+                raise RuntimeError(f"Groq API error (HTTP {response.status_code}). Check provider configuration and retry.")
 
             data = response.json()
             message_content = data["choices"][0]["message"]["content"]
@@ -164,8 +164,8 @@ class GroqProvider(LLMProvider):
             logger.error(f"Groq request timed out after {self._timeout}s")
             raise RuntimeError(f"Groq inference timed out after {self._timeout}s. Try a shorter query or smaller chunk set.") from te
         except httpx.RequestError as re:
-            logger.error(f"Network error reaching Groq API: {re}")
-            raise RuntimeError(f"Could not connect to Groq API ({self._base_url}): {str(re)}") from re
+            logger.error("Groq network request failed (%s)", type(re).__name__)
+            raise RuntimeError("Could not connect to the configured Groq-compatible endpoint. Check connectivity and retry.") from re
 
     async def stream_answer(
         self,
@@ -264,6 +264,9 @@ class GroqProvider(LLMProvider):
 
         except httpx.TimeoutException:
             yield AnswerStreamEventModel(type="error", error="Groq stream timed out.")
-        except Exception as e:
-            logger.error(f"Error during Groq answer streaming: {e}", exc_info=True)
-            yield AnswerStreamEventModel(type="error", error=f"Stream error: {str(e)}")
+        except Exception as exc:
+            logger.error("Groq answer stream failed (%s)", type(exc).__name__)
+            yield AnswerStreamEventModel(
+                type="error",
+                error="The Groq answer stream failed. Retrieved evidence is still available; retry when the provider is ready.",
+            )

@@ -47,15 +47,10 @@ export async function requestCapture(mode: CaptureMode): Promise<CaptureResult> 
 
   const action = actionMap[mode];
 
-  // Send message to active tab content script
-  return new Promise((resolve, reject) => {
+  const sendCaptureMessage = (): Promise<CaptureResult> => new Promise((resolve, reject) => {
     chrome.tabs.sendMessage(tab.id!, { action }, (response) => {
       if (chrome.runtime.lastError) {
-        return reject(
-          new Error(
-            `Unable to communicate with tab content script (${chrome.runtime.lastError.message}). Try refreshing the target web page.`
-          )
-        );
+        return reject(new Error(chrome.runtime.lastError.message));
       }
 
       if (!response) {
@@ -75,4 +70,18 @@ export async function requestCapture(mode: CaptureMode): Promise<CaptureResult> 
       }
     });
   });
+
+  try {
+    return await sendCaptureMessage();
+  } catch {
+    // Inject only after an explicit user action. This keeps the extension from
+    // holding persistent access to every page while preserving the P0 workflow.
+    try {
+      await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] });
+      return await sendCaptureMessage();
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : 'unknown browser error';
+      throw new Error(`Unable to start capture on this page (${detail}). Refresh the page and retry.`);
+    }
+  }
 }

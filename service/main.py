@@ -1,8 +1,11 @@
 import uuid
 import time
 import json
+import logging
+import os
+import re
 from datetime import datetime, timezone
-from fastapi import FastAPI, Request, HTTPException, status, UploadFile, File, Response
+from fastapi import FastAPI, Request, HTTPException, status, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.exceptions import RequestValidationError
@@ -33,6 +36,27 @@ from service.retrieval import run_retrieval
 from service.question_generator import generate_draft_questions_from_blocks
 from service.llm import get_llm_provider
 from service.packager import PackageExporter, validate_package_zip
+from service.limits import MAX_REQUEST_BYTES
+
+
+logger = logging.getLogger("webrag.service")
+if not logger.handlers:
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter("%(message)s"))
+    logger.addHandler(handler)
+logger.setLevel(os.getenv("WEBRAG_LOG_LEVEL", "INFO").upper())
+
+_REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
+
+
+def _safe_request_id(candidate: str | None) -> str:
+    if candidate and _REQUEST_ID_PATTERN.fullmatch(candidate):
+        return candidate
+    return str(uuid.uuid4())
+
+
+def _event_log(**fields: object) -> None:
+    logger.info(json.dumps(fields, separators=(",", ":"), sort_keys=True))
 
 
 app = FastAPI(
@@ -41,21 +65,62 @@ app = FastAPI(
     version="0.1.0"
 )
 
-# CORS middleware configured for Chrome extension and local development
+# Local development origins are explicit. Chrome extension origins are accepted
+# by scheme and valid MV3 extension-ID shape; arbitrary web origins are rejected.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Restricted in production MV3 messaging / chrome-extension:// origins
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=[],
+    allow_origin_regex=r"(?:chrome-extension://[a-p]{32}|http://(?:127\.0\.0\.1|localhost):\d{1,5})",
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "X-Request-ID"],
 )
 
 @app.middleware("http")
 async def add_request_metadata(request: Request, call_next):
-    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+    request_id = _safe_request_id(request.headers.get("X-Request-ID"))
     request.state.request_id = request_id
-    response = await call_next(request)
+    started = time.perf_counter()
+    content_length = request.headers.get("content-length")
+    if content_length:
+        try:
+            if int(content_length) > MAX_REQUEST_BYTES:
+                response = JSONResponse(
+                    status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+                    content=ErrorResponse(
+                        error=ErrorDetail(
+                            code="REQUEST_TOO_LARGE",
+                            message=f"Request exceeds the {MAX_REQUEST_BYTES // (1024 * 1024)} MB local-service limit. Reduce the captured page or chunk set and retry.",
+                            requestId=request_id,
+                            timestamp=datetime.now(timezone.utc).isoformat(),
+                        )
+                    ).model_dump(),
+                )
+            else:
+                response = await call_next(request)
+        except ValueError:
+            response = await call_next(request)
+    else:
+        response = await call_next(request)
+
+    duration_ms = round((time.perf_counter() - started) * 1000, 2)
     response.headers["X-Request-ID"] = request_id
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers.setdefault("Cache-Control", "no-store")
+    log_fields = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "event": "http_request_complete",
+        "request_id": request_id,
+        "method": request.method,
+        "path": request.url.path,
+        "status": response.status_code,
+        "duration_ms": duration_ms,
+    }
+    if response.status_code >= 400:
+        log_fields["error_code"] = "REQUEST_TOO_LARGE" if response.status_code == 413 else f"HTTP_{response.status_code}"
+    _event_log(
+        **log_fields,
+    )
     return response
 
 @app.exception_handler(RequestValidationError)
@@ -97,12 +162,20 @@ async def starlette_http_exception_handler(request: Request, exc: StarletteHTTPE
 async def global_exception_handler(request: Request, exc: Exception):
     request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
     now_iso = datetime.now(timezone.utc).isoformat()
+    _event_log(
+        timestamp=now_iso,
+        event="unhandled_exception",
+        request_id=request_id,
+        path=request.url.path,
+        error_code="INTERNAL_SERVER_ERROR",
+        exception_type=type(exc).__name__,
+    )
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content=ErrorResponse(
             error=ErrorDetail(
                 code="INTERNAL_SERVER_ERROR",
-                message=f"An unexpected server error occurred: {str(exc)}",
+                message="An unexpected server error occurred. Retry the action and use the request ID when troubleshooting.",
                 requestId=request_id,
                 timestamp=now_iso
             )
@@ -173,8 +246,8 @@ async def search_chunks(payload: SearchRequest):
         return response
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
+    except Exception:
+        raise HTTPException(status_code=500, detail="Search failed unexpectedly. Retry using a smaller chunk set.")
 
 # Day 6 Retrieval Debugger & Question Generator Endpoints
 @app.post("/retrieval/query", response_model=RetrievalQueryResponse)
@@ -221,8 +294,8 @@ async def generate_grounded_answer(req: GroundedAnswerRequest):
         raise HTTPException(status_code=400, detail=str(ve))
     except RuntimeError as re:
         raise HTTPException(status_code=502, detail=str(re))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Answer generation failed: {str(e)}")
+    except Exception:
+        raise HTTPException(status_code=500, detail="Answer generation failed unexpectedly. Retrieved evidence is still available.")
 
 @app.post("/llm/answer/stream")
 async def stream_grounded_answer(req: GroundedAnswerRequest):
@@ -242,8 +315,11 @@ async def stream_grounded_answer(req: GroundedAnswerRequest):
                 temperature=req.temperature,
             ):
                 yield f"data: {event.model_dump_json()}\n\n"
-        except Exception as e:
-            err_event_json = f'{{"type":"error","error":{json.dumps(str(e))}}}'
+        except Exception:
+            err_event_json = json.dumps({
+                "type": "error",
+                "error": "The provider stream ended unexpectedly. Retrieved evidence is still available; retry when the provider is ready.",
+            })
             yield f"data: {err_event_json}\n\n"
 
     return StreamingResponse(
@@ -290,18 +366,19 @@ async def export_rag_package(req: ExportPackageRequest):
         )
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Package export failed: {str(e)}")
+    except Exception:
+        raise HTTPException(status_code=500, detail="Package export failed unexpectedly. Your capture remains available; retry with fewer records.")
 
 
 @app.post("/package/validate", response_model=PackageValidationReport)
 async def validate_rag_package(request: Request):
+    content = await request.body()
+    if not content:
+        raise HTTPException(status_code=400, detail="Uploaded package ZIP file is empty.")
     try:
-        content = await request.body()
-        if not content:
-            raise HTTPException(status_code=400, detail="Uploaded package ZIP file is empty.")
         report = validate_package_zip(content)
         return report
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to validate package ZIP: {str(e)}")
-
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=f"Failed to validate package ZIP: {str(exc)}")
+    except Exception:
+        raise HTTPException(status_code=400, detail="Failed to validate package ZIP. Confirm the file is a valid WebRAG package.")

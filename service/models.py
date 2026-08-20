@@ -1,10 +1,23 @@
-from typing import List, Optional, Literal
-from pydantic import BaseModel, Field
+from typing import Annotated, List, Optional, Literal
+from pydantic import BaseModel, Field, StringConstraints
+
+from service.limits import (
+    MAX_BLOCKS,
+    MAX_BLOCK_CHARACTERS,
+    MAX_CHUNKS,
+    MAX_CHUNK_CHARACTERS,
+    MAX_EVALUATION_RECORDS,
+    MAX_HEADING_DEPTH,
+    MAX_LLM_CHUNKS,
+    MAX_TEXTS,
+    MAX_TEXT_CHARACTERS,
+)
 
 CaptureMode = Literal["selection", "element", "page"]
 BlockType = Literal["heading", "paragraph", "list", "code", "table", "callout"]
 ChunkingStrategy = Literal["recursive", "heading_aware"]
 QuestionStatus = Literal["draft", "curated"]
+BoundedInputText = Annotated[str, StringConstraints(max_length=MAX_TEXT_CHARACTERS)]
 
 class HealthResponse(BaseModel):
     status: Literal["healthy", "degraded", "unhealthy"] = "healthy"
@@ -29,16 +42,16 @@ class ErrorResponse(BaseModel):
     error: ErrorDetail
 
 class TextQuote(BaseModel):
-    exact: str
-    prefix: Optional[str] = None
-    suffix: Optional[str] = None
+    exact: str = Field(max_length=10_000)
+    prefix: Optional[str] = Field(default=None, max_length=1_000)
+    suffix: Optional[str] = Field(default=None, max_length=1_000)
 
 class SourceAnchor(BaseModel):
     blockId: str
-    headingPath: List[str]
-    cssSelector: str
+    headingPath: List[str] = Field(max_length=MAX_HEADING_DEPTH)
+    cssSelector: str = Field(max_length=4_096)
     textQuote: TextQuote
-    nodePath: Optional[str] = None
+    nodePath: Optional[str] = Field(default=None, max_length=4_096)
 
 class BlockAttributes(BaseModel):
     headingLevel: Optional[int] = Field(default=None, ge=1, le=6)
@@ -51,8 +64,8 @@ class BlockAttributes(BaseModel):
 class BlockModel(BaseModel):
     id: str
     type: BlockType
-    content: str
-    headingPath: List[str]
+    content: str = Field(max_length=MAX_BLOCK_CHARACTERS)
+    headingPath: List[str] = Field(max_length=MAX_HEADING_DEPTH)
     sourceAnchor: SourceAnchor
     contentHash: str
     included: bool = True
@@ -70,7 +83,7 @@ class CaptureModel(BaseModel):
 
 class CaptureResultModel(BaseModel):
     capture: CaptureModel
-    blocks: List[BlockModel] = Field(default_factory=list)
+    blocks: List[BlockModel] = Field(default_factory=list, max_length=MAX_BLOCKS)
 
 class ChunkSourceSpan(BaseModel):
     blockId: str
@@ -96,10 +109,10 @@ class ChunkModel(BaseModel):
     sourceNamespace: str
     strategy: ChunkingStrategy
     sequence: int = Field(ge=0)
-    content: str
-    sourceBlockIds: List[str]
-    sourceSpans: List[ChunkSourceSpan]
-    headingPath: List[str]
+    content: str = Field(max_length=MAX_CHUNK_CHARACTERS)
+    sourceBlockIds: List[str] = Field(max_length=MAX_BLOCKS)
+    sourceSpans: List[ChunkSourceSpan] = Field(max_length=MAX_BLOCKS)
+    headingPath: List[str] = Field(max_length=MAX_HEADING_DEPTH)
     tokenCount: int = Field(ge=0)
     characterCount: int = Field(ge=0)
     contentHash: str
@@ -116,8 +129,8 @@ class ModelStatusResponse(BaseModel):
     isLocal: bool = True
 
 class EmbedRequest(BaseModel):
-    texts: Optional[List[str]] = None
-    chunks: Optional[List[ChunkModel]] = None
+    texts: Optional[List[BoundedInputText]] = Field(default=None, max_length=MAX_TEXTS)
+    chunks: Optional[List[ChunkModel]] = Field(default=None, max_length=MAX_CHUNKS)
     model: Optional[str] = None
 
 class EmbedResponse(BaseModel):
@@ -139,7 +152,7 @@ class RetrievalResultModel(BaseModel):
 
 class SearchRequest(BaseModel):
     query: str = Field(min_length=1, max_length=2000)
-    chunks: List[ChunkModel] = Field(min_length=1)
+    chunks: List[ChunkModel] = Field(min_length=1, max_length=MAX_CHUNKS)
     topK: int = Field(default=5, ge=1, le=50)
     strategy: Optional[ChunkingStrategy] = None
 
@@ -153,10 +166,10 @@ class SearchResponse(BaseModel):
 
 # Day 6 Retrieval Debugger & Evaluation Models
 class RetrievalQueryRequest(BaseModel):
-    query: str
+    query: str = Field(min_length=1, max_length=2_000)
     strategy: ChunkingStrategy
     topK: int = Field(default=5, ge=1, le=20)
-    chunks: List[ChunkModel]
+    chunks: List[ChunkModel] = Field(min_length=1, max_length=MAX_CHUNKS)
 
 class RetrievalResultItem(BaseModel):
     chunkId: str
@@ -172,7 +185,7 @@ class RetrievalQueryResponse(BaseModel):
     executionTimeMs: float
 
 class DraftQuestionsRequest(BaseModel):
-    blocks: List[BlockModel]
+    blocks: List[BlockModel] = Field(min_length=1, max_length=MAX_BLOCKS)
 
 class TestQuestionModel(BaseModel):
     __test__ = False
@@ -212,7 +225,7 @@ class CitationRefModel(BaseModel):
 
 class GroundedAnswerRequest(BaseModel):
     query: str = Field(min_length=1, max_length=2000)
-    chunks: List[ChunkModel] = Field(min_length=1)
+    chunks: List[ChunkModel] = Field(min_length=1, max_length=MAX_LLM_CHUNKS)
     model: Optional[str] = None
     temperature: float = Field(default=0.1, ge=0.0, le=1.0)
 
@@ -313,10 +326,10 @@ class RetrievalEvaluationResultModel(BaseModel):
 
 class ExportPackageRequest(BaseModel):
     captureResult: CaptureResultModel
-    chunks: List[ChunkModel] = Field(default_factory=list)
-    questions: Optional[List[TestQuestionModel]] = Field(default_factory=list)
-    retrievalResults: Optional[List[RetrievalEvaluationResultModel]] = Field(default_factory=list)
-    answers: Optional[List[GroundedAnswerResponse]] = Field(default_factory=list)
+    chunks: List[ChunkModel] = Field(default_factory=list, max_length=MAX_CHUNKS)
+    questions: Optional[List[TestQuestionModel]] = Field(default_factory=list, max_length=MAX_EVALUATION_RECORDS)
+    retrievalResults: Optional[List[RetrievalEvaluationResultModel]] = Field(default_factory=list, max_length=MAX_EVALUATION_RECORDS)
+    answers: Optional[List[GroundedAnswerResponse]] = Field(default_factory=list, max_length=MAX_EVALUATION_RECORDS)
     generationMetadata: Optional[GenerationMetadata] = None
 
 class PackageValidationIssue(BaseModel):
@@ -335,4 +348,3 @@ class PackageValidationReport(BaseModel):
     totalAnswers: int = 0
     issues: List[PackageValidationIssue] = Field(default_factory=list)
     manifest: Optional[PackageManifest] = None
-
