@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 import uuid
 import time
 import json
 import logging
 import os
 import re
+from typing import Optional
 from datetime import datetime, timezone
 from fastapi import FastAPI, Request, HTTPException, status, Response
 from fastapi.middleware.cors import CORSMiddleware
