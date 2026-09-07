@@ -4,12 +4,15 @@ import {
   LLMProviderStatusResponse,
   AnswerStreamEvent,
 } from '../../../../packages/schema';
+import { fetchWithTimeout } from '../../utils/fetchWithTimeout';
 
 const SERVICE_URL = 'http://127.0.0.1:8000';
 
 export async function fetchLLMStatus(): Promise<LLMProviderStatusResponse> {
   try {
-    const response = await fetch(`${SERVICE_URL}/llm/status`);
+    const response = await fetchWithTimeout(`${SERVICE_URL}/llm/status`, {
+      timeoutMs: 5000,
+    });
     if (!response.ok) {
       return {
         status: 'error',
@@ -37,13 +40,15 @@ export async function fetchLLMStatus(): Promise<LLMProviderStatusResponse> {
 
 export async function generateGroundedAnswer(
   req: GroundedAnswerRequest,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  timeoutMs: number = 60000
 ): Promise<GroundedAnswerResponse> {
-  const response = await fetch(`${SERVICE_URL}/llm/answer`, {
+  const response = await fetchWithTimeout(`${SERVICE_URL}/llm/answer`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(req),
     signal,
+    timeoutMs,
   });
 
   if (!response.ok) {
@@ -69,14 +74,16 @@ export interface StreamCallbacks {
 export async function streamGroundedAnswer(
   req: GroundedAnswerRequest,
   callbacks: StreamCallbacks,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  timeoutMs: number = 60000
 ): Promise<void> {
   try {
-    const response = await fetch(`${SERVICE_URL}/llm/answer/stream`, {
+    const response = await fetchWithTimeout(`${SERVICE_URL}/llm/answer/stream`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(req),
       signal,
+      timeoutMs,
     });
 
     if (!response.ok) {

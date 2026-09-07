@@ -1,4 +1,5 @@
-import { Chunk, ModelStatusResponse, SearchResponse, SearchRequest, EmbedResponse, ChunkingStrategy } from '../../../packages/schema';
+import { Chunk, ModelStatusResponse, SearchResponse, SearchRequest, EmbedResponse, ChunkingStrategy, SearchMode } from '../../../packages/schema';
+import { fetchWithTimeout } from '../utils/fetchWithTimeout';
 
 const SERVICE_BASE_URL = 'http://127.0.0.1:8000';
 
@@ -16,9 +17,10 @@ export class RetrievalServiceError extends Error {
 
 export async function fetchModelStatus(): Promise<ModelStatusResponse> {
   try {
-    const response = await fetch(`${SERVICE_BASE_URL}/model/status`, {
+    const response = await fetchWithTimeout(`${SERVICE_BASE_URL}/model/status`, {
       method: 'GET',
-      headers: { 'Accept': 'application/json' }
+      headers: { 'Accept': 'application/json' },
+      timeoutMs: 5000,
     });
 
     if (!response.ok) {
@@ -32,6 +34,13 @@ export async function fetchModelStatus(): Promise<ModelStatusResponse> {
     return await response.json();
   } catch (err: any) {
     if (err instanceof RetrievalServiceError) throw err;
+    if (err?.code === 'REQUEST_TIMEOUT') {
+      throw new RetrievalServiceError(
+        `Model status check timed out. Companion service is unresponsive.`,
+        'REQUEST_TIMEOUT',
+        408
+      );
+    }
     throw new RetrievalServiceError(
       `Cannot connect to local WebRAG companion service at ${SERVICE_BASE_URL}. Ensure 'uvicorn service.main:app --port 8000' is running.`,
       'SERVICE_OFFLINE'
@@ -42,6 +51,10 @@ export async function fetchModelStatus(): Promise<ModelStatusResponse> {
 export interface SearchOptions {
   topK?: number;
   strategy?: ChunkingStrategy;
+  searchMode?: SearchMode;
+  minScore?: number;
+  timeoutMs?: number;
+  signal?: AbortSignal;
 }
 
 export async function searchLocalChunks(
@@ -61,17 +74,21 @@ export async function searchLocalChunks(
     query: query.trim(),
     chunks,
     topK: options.topK ?? 5,
-    strategy: options.strategy
+    strategy: options.strategy,
+    searchMode: options.searchMode ?? 'hybrid',
+    minScore: options.minScore,
   };
 
   try {
-    const response = await fetch(`${SERVICE_BASE_URL}/search`, {
+    const response = await fetchWithTimeout(`${SERVICE_BASE_URL}/search`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
+      timeoutMs: options.timeoutMs ?? 15000,
+      signal: options.signal,
     });
 
     if (!response.ok) {
@@ -94,6 +111,13 @@ export async function searchLocalChunks(
     return await response.json();
   } catch (err: any) {
     if (err instanceof RetrievalServiceError) throw err;
+    if (err?.code === 'REQUEST_TIMEOUT') {
+      throw new RetrievalServiceError(
+        `Search request timed out after ${options.timeoutMs ?? 15000}ms. Service took too long to respond.`,
+        'REQUEST_TIMEOUT',
+        408
+      );
+    }
     throw new RetrievalServiceError(
       `Cannot connect to local WebRAG companion service at ${SERVICE_BASE_URL}. Ensure the service is running.`,
       'SERVICE_OFFLINE'
@@ -101,15 +125,16 @@ export async function searchLocalChunks(
   }
 }
 
-export async function embedLocalChunks(chunks: Chunk[]): Promise<EmbedResponse> {
+export async function embedLocalChunks(chunks: Chunk[], timeoutMs: number = 15000): Promise<EmbedResponse> {
   try {
-    const response = await fetch(`${SERVICE_BASE_URL}/embed`, {
+    const response = await fetchWithTimeout(`${SERVICE_BASE_URL}/embed`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
       },
-      body: JSON.stringify({ chunks })
+      body: JSON.stringify({ chunks }),
+      timeoutMs,
     });
 
     if (!response.ok) {
@@ -119,6 +144,9 @@ export async function embedLocalChunks(chunks: Chunk[]): Promise<EmbedResponse> 
     return await response.json();
   } catch (err: any) {
     if (err instanceof RetrievalServiceError) throw err;
+    if (err?.code === 'REQUEST_TIMEOUT') {
+      throw new RetrievalServiceError(`Embedding request timed out after ${timeoutMs}ms.`, 'REQUEST_TIMEOUT', 408);
+    }
     throw new RetrievalServiceError(`Embedding service unavailable: ${err.message}`, 'SERVICE_OFFLINE');
   }
 }

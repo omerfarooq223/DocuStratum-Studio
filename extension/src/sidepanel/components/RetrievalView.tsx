@@ -21,6 +21,7 @@ export const RetrievalView: React.FC<RetrievalViewProps> = ({
 }) => {
   const [query, setQuery] = useState('');
   const [strategyFilter, setStrategyFilter] = useState<'all' | ChunkingStrategy>('all');
+  const [searchMode, setSearchMode] = useState<'hybrid' | 'dense' | 'bm25'>('hybrid');
   const [results, setResults] = useState<RetrievalResult[]>([]);
   const [totalCandidates, setTotalCandidates] = useState<number>(0);
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
@@ -78,7 +79,8 @@ export const RetrievalView: React.FC<RetrievalViewProps> = ({
       const selectedStrategy = strategyFilter === 'all' ? undefined : strategyFilter;
       const resp = await searchLocalChunks(q, chunks, {
         topK: 5,
-        strategy: selectedStrategy
+        strategy: selectedStrategy,
+        searchMode
       });
 
       setResults(resp.results);
@@ -185,6 +187,36 @@ export const RetrievalView: React.FC<RetrievalViewProps> = ({
                 onClick={() => setStrategyFilter('heading_aware')}
               >
                 Heading-Aware ({chunks.filter((c) => c.strategy === 'heading_aware').length})
+              </button>
+            </div>
+          </div>
+
+          <div className="filter-group" style={{ marginTop: '0.4rem' }}>
+            <span className="filter-label">Search Mode:</span>
+            <div className="strategy-toggle-buttons">
+              <button
+                type="button"
+                className={`filter-btn ${searchMode === 'hybrid' ? 'active' : ''}`}
+                onClick={() => setSearchMode('hybrid')}
+                title="Combines Dense Vector similarity and BM25 keyword matching via Reciprocal Rank Fusion"
+              >
+                ⚡ Hybrid (RRF)
+              </button>
+              <button
+                type="button"
+                className={`filter-btn ${searchMode === 'dense' ? 'active' : ''}`}
+                onClick={() => setSearchMode('dense')}
+                title="Pure Dense Vector Cosine Similarity"
+              >
+                🧠 Vector
+              </button>
+              <button
+                type="button"
+                className={`filter-btn ${searchMode === 'bm25' ? 'active' : ''}`}
+                onClick={() => setSearchMode('bm25')}
+                title="BM25 Lexical exact keyword and code identifier matching"
+              >
+                🔤 Keyword (BM25)
               </button>
             </div>
           </div>

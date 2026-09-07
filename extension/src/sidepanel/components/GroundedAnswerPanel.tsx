@@ -7,6 +7,7 @@ import {
   CitationRef,
 } from '../../../../packages/schema';
 import { fetchLLMStatus, streamGroundedAnswer } from '../utils/llmClient';
+import { computeGroundedness, computeAnswerRelevance } from '../utils/evaluationMetrics';
 import { StaleSourceWarning } from './StaleSourceWarning';
 import { SavedBlockPreviewModal } from './SavedBlockPreviewModal';
 
@@ -211,19 +212,39 @@ export const GroundedAnswerPanel: React.FC<GroundedAnswerPanelProps> = ({
             )}
           </div>
 
-          {/* Action Bar & Latency */}
+          {/* Action Bar, Latency & RAG Triad Indicators */}
           {status === 'complete' && (
-            <div className="flex items-center justify-between pt-2 border-t border-slate-800/70 text-[11px]">
-              <div className="flex items-center gap-3 text-slate-400 font-mono text-[10px]">
-                <span>Latency: <strong className="text-indigo-300">{completedResponse?.latencyMs ?? 0} ms</strong></span>
-                <span>Citations: <strong className="text-slate-200">{completedResponse?.citations.length ?? 0}</strong></span>
+            <div className="space-y-2 pt-2 border-t border-slate-800/70">
+              <div className="flex items-center justify-between text-[11px]">
+                <div className="flex items-center gap-3 text-slate-400 font-mono text-[10px]">
+                  <span>Latency: <strong className="text-indigo-300">{completedResponse?.latencyMs ?? 0} ms</strong></span>
+                  <span>Citations: <strong className="text-slate-200">{completedResponse?.citations.length ?? 0}</strong></span>
+                </div>
+                <button
+                  onClick={handleCopy}
+                  className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[10px] transition"
+                >
+                  {copied ? '✓ Copied' : 'Copy Answer'}
+                </button>
               </div>
-              <button
-                onClick={handleCopy}
-                className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[10px] transition"
-              >
-                {copied ? '✓ Copied' : 'Copy Answer'}
-              </button>
+
+              {completedResponse && (
+                <div className="flex items-center gap-2 pt-1 border-t border-slate-800/40 text-[10px]">
+                  <span className="text-slate-400 font-medium">Triad:</span>
+                  <span
+                    className="px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800/40 font-mono"
+                    title="Groundedness: Percentage of statements verified by cited excerpts"
+                  >
+                    🛡️ Grounded {Math.round(computeGroundedness(completedResponse.answer, completedResponse.citationRefs.map((c) => c.excerpt)) * 100)}%
+                  </span>
+                  <span
+                    className="px-2 py-0.5 rounded bg-sky-950/80 text-sky-300 border border-sky-800/40 font-mono"
+                    title="Answer Relevance: Semantic coverage of prompt query"
+                  >
+                    🎯 Relevance {Math.round(computeAnswerRelevance(query, completedResponse.answer) * 100)}%
+                  </span>
+                </div>
+              )}
             </div>
           )}
         </div>

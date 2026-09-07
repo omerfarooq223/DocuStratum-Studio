@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { capturePage } from '../page';
 
-describe('Day 9 adversarial capture fixture', () => {
+describe('Adversarial capture fixture', () => {
   it('keeps prompt injection as inert text and excludes executable or secret-bearing DOM', async () => {
     const fixture = readFileSync(
       resolve(process.cwd(), '../fixtures/malicious-fixture.html'),

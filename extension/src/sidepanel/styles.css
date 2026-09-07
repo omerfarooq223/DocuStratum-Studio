@@ -1251,7 +1251,7 @@ input:checked + .slider::before {
 }
 
 /* ==========================================================================
-   Day 5 — Local Embeddings & Vector Retrieval View
+   Local Embeddings & Vector Retrieval View
    ========================================================================== */
 
 .retrieval-view-container {

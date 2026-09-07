@@ -101,6 +101,14 @@ export interface Chunk {
   continuations?: ChunkContinuation[];
 }
 
+export type SearchMode = 'hybrid' | 'dense' | 'bm25';
+
+export interface RAGTriadMetrics {
+  contextRelevance: number; // 0.0 to 1.0
+  groundedness: number;     // 0.0 to 1.0 (faithfulness)
+  answerRelevance: number;  // 0.0 to 1.0
+}
+
 export interface RetrievalResult {
   chunkId: string;
   score: number;
@@ -109,10 +117,13 @@ export interface RetrievalResult {
   headingPath: string[];
   excerpt: string;
   sourceBlockIds: string[];
+  searchMode?: SearchMode;
+  denseScore?: number;
+  bm25Score?: number;
 }
 
 // ----------------------------------------------------
-// Day 6 Evaluation & Highlight Models
+// Evaluation & Highlight Models
 // ----------------------------------------------------
 
 export type QuestionStatus = 'draft' | 'curated';
@@ -132,6 +143,7 @@ export interface RetrievalRunConfig {
   topK: number;
   strategy: ChunkingStrategy;
   captureId: string;
+  searchMode?: SearchMode;
 }
 
 export interface RetrievalEvaluationResult {
@@ -147,6 +159,8 @@ export interface RetrievalEvaluationResult {
   hitAt3?: boolean;
   hitAt5?: boolean;
   reciprocalRank?: number;
+  searchMode?: SearchMode;
+  triad?: RAGTriadMetrics;
   timestamp: string;
   notes?: string;
 }
@@ -212,6 +226,8 @@ export interface SearchRequest {
   chunks: Chunk[];
   topK?: number;
   strategy?: ChunkingStrategy;
+  searchMode?: SearchMode;
+  minScore?: number;
 }
 
 export interface SearchResponse {
@@ -221,6 +237,15 @@ export interface SearchResponse {
   model: string;
   dimension: number;
   totalCandidates: number;
+  searchMode?: SearchMode;
+}
+
+export interface RetrievalQueryResponse {
+  results: RetrievalResult[];
+  executionTimeMs: number;
+  searchMode?: SearchMode;
+  degraded?: boolean;
+  fallbackReason?: string;
 }
 
 export interface HealthResponse {
@@ -296,7 +321,7 @@ export interface AnswerStreamEvent {
   error?: string;
 }
 // ----------------------------------------------------
-// Day 8 Portable RAG Package Models
+// Portable RAG Package Models
 // ----------------------------------------------------
 
 export interface ManifestFileEntry {

@@ -11,7 +11,7 @@ describe.skipIf(!runLive)('live MDN documentation smoke test', () => {
     'runs page, selection, and element capture against current public markup',
     async () => {
       const response = await fetch(target, {
-        headers: { 'User-Agent': 'WebRAG-Studio-Day-2-Smoke-Test/0.2' },
+        headers: { 'User-Agent': 'WebRAG-Studio-Smoke-Test/0.2' },
       });
       expect(response.ok).toBe(true);
       document.open();

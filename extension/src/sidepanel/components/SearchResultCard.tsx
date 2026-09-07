@@ -31,10 +31,30 @@ export const SearchResultCard: React.FC<SearchResultCardProps> = ({
         </div>
         
         <div className="result-badges">
-          <span className={`result-score-badge ${getScoreColorClass(result.score)}`} title={`Cosine similarity: ${result.score}`}>
+          <span
+            className={`result-score-badge ${getScoreColorClass(result.score)}`}
+            title={`Score: ${result.score.toFixed(4)}${result.denseScore !== undefined && result.denseScore !== null ? ` | Dense: ${result.denseScore.toFixed(3)}` : ''}${result.bm25Score !== undefined && result.bm25Score !== null ? ` | BM25: ${result.bm25Score.toFixed(3)}` : ''}`}
+          >
             <span className="score-meter-bar" style={{ width: `${scorePercent}%` }} />
             <span className="score-text">{(result.score).toFixed(3)} ({scorePercent}%)</span>
           </span>
+
+          {result.searchMode && (
+            <span
+              className="strategy-pill-badge"
+              style={{
+                fontSize: '10px',
+                padding: '2px 6px',
+                borderRadius: '4px',
+                background: result.searchMode === 'hybrid' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(99, 102, 241, 0.15)',
+                color: result.searchMode === 'hybrid' ? '#34d399' : '#a5b4fc',
+                border: result.searchMode === 'hybrid' ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(99, 102, 241, 0.3)'
+              }}
+              title={`Retrieved via ${result.searchMode.toUpperCase()} mode`}
+            >
+              {result.searchMode === 'hybrid' ? '⚡ Hybrid' : result.searchMode === 'bm25' ? '🔤 BM25' : '🧠 Vector'}
+            </span>
+          )}
 
           <span className={`strategy-pill-badge pill-${result.strategy}`}>
             {formattedStrategy}

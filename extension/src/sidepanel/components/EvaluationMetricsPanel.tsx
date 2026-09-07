@@ -22,7 +22,7 @@ export const EvaluationMetricsPanel: React.FC<EvaluationMetricsPanelProps> = ({
         </span>
       </div>
 
-      {/* Current Run Metrics */}
+      {/* Current Run Retrieval Metrics */}
       <div className="grid grid-cols-4 gap-2">
         <div className="bg-slate-950 p-2 rounded border border-slate-800 text-center">
           <span className="text-[10px] text-slate-500 uppercase font-medium">Hit@1</span>
@@ -65,6 +65,58 @@ export const EvaluationMetricsPanel: React.FC<EvaluationMetricsPanelProps> = ({
           </div>
         </div>
       </div>
+
+      {/* RAG Triad Evaluation Metrics */}
+      {latestEval?.triad && (
+        <div className="pt-2 border-t border-slate-800/80 space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-300">
+              ⚡ RAG Triad Quality Scores
+            </span>
+            <span className="text-[10px] text-slate-500">Industry-standard TruLens/RAGAS</span>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="bg-slate-950/80 p-2 rounded border border-indigo-950/60">
+              <div className="flex justify-between items-center text-[10px] text-slate-400">
+                <span>Context Rel.</span>
+                <strong className="text-indigo-300">{Math.round(latestEval.triad.contextRelevance * 100)}%</strong>
+              </div>
+              <div className="w-full bg-slate-800 h-1.5 rounded-full mt-1.5 overflow-hidden">
+                <div
+                  className="bg-indigo-500 h-full rounded-full transition-all"
+                  style={{ width: `${Math.round(latestEval.triad.contextRelevance * 100)}%` }}
+                />
+              </div>
+            </div>
+
+            <div className="bg-slate-950/80 p-2 rounded border border-emerald-950/60">
+              <div className="flex justify-between items-center text-[10px] text-slate-400">
+                <span>Groundedness</span>
+                <strong className="text-emerald-300">{Math.round(latestEval.triad.groundedness * 100)}%</strong>
+              </div>
+              <div className="w-full bg-slate-800 h-1.5 rounded-full mt-1.5 overflow-hidden">
+                <div
+                  className="bg-emerald-500 h-full rounded-full transition-all"
+                  style={{ width: `${Math.round(latestEval.triad.groundedness * 100)}%` }}
+                />
+              </div>
+            </div>
+
+            <div className="bg-slate-950/80 p-2 rounded border border-sky-950/60">
+              <div className="flex justify-between items-center text-[10px] text-slate-400">
+                <span>Answer Rel.</span>
+                <strong className="text-sky-300">{Math.round(latestEval.triad.answerRelevance * 100)}%</strong>
+              </div>
+              <div className="w-full bg-slate-800 h-1.5 rounded-full mt-1.5 overflow-hidden">
+                <div
+                  className="bg-sky-500 h-full rounded-full transition-all"
+                  style={{ width: `${Math.round(latestEval.triad.answerRelevance * 100)}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Aggregate Benchmark Summary */}
       {aggregate.totalEvaluations > 1 && (

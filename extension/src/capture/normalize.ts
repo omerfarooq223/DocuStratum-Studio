@@ -34,14 +34,44 @@ function escapeTableCell(value: string): string {
   return value.replace(/\|/g, '\\|').replace(/\n/g, ' ');
 }
 
+const LANGUAGE_ALIASES: Readonly<Record<string, string>> = {
+  js: 'javascript',
+  ts: 'typescript',
+  py: 'python',
+  sh: 'bash',
+  shell: 'bash',
+  zsh: 'bash',
+  yml: 'yaml',
+  rs: 'rust',
+  rb: 'ruby',
+  cs: 'csharp',
+  'c++': 'cpp',
+  golang: 'go',
+};
+
 function inferCodeLanguage(pre: Element): string | undefined {
   const code = pre.matches('code') ? pre : pre.querySelector(':scope > code');
-  const explicit = pre.getAttribute('data-language') ?? code?.getAttribute('data-language');
-  if (explicit) return explicit.trim().toLowerCase();
+  const explicit =
+    pre.getAttribute('data-language') ??
+    pre.getAttribute('data-lang') ??
+    pre.getAttribute('data-code-language') ??
+    code?.getAttribute('data-language') ??
+    code?.getAttribute('data-lang');
+
+  if (explicit) {
+    const clean = explicit.trim().toLowerCase();
+    return LANGUAGE_ALIASES[clean] ?? clean;
+  }
 
   const classes = `${pre.className} ${code?.className ?? ''}`;
-  const match = classes.match(/(?:lang(?:uage)?|highlight-source)-([a-z0-9_+#.-]+)/i);
-  return match?.[1]?.toLowerCase();
+  const match = classes.match(/(?:lang(?:uage)?|highlight-source|brush:?)-([a-z0-9_+#.-]+)/i) ??
+                classes.match(/\b(?:language-)?([a-z0-9_+#.-]+)\s+hljs\b/i);
+
+  if (match?.[1]) {
+    const lang = match[1].toLowerCase();
+    return LANGUAGE_ALIASES[lang] ?? lang;
+  }
+  return undefined;
 }
 
 function renderList(list: Element, depth = 0): string[] {

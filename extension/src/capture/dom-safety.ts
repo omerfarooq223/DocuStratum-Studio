@@ -109,6 +109,29 @@ export function safeText(node: Node, shouldSkip?: (element: Element) => boolean)
   if (node.tagName === 'BR') return '\n';
   if (node.tagName === 'IMG') return node.getAttribute('alt') ?? '';
 
+  // Intercept MathML, KaTeX, and MathJax formula elements to preserve LaTeX formulas
+  const tagLower = node.tagName.toLowerCase();
+  const isKaTeX = node.classList.contains('katex') || node.classList.contains('katex-display');
+  const isMathML = tagLower === 'math';
+  const isMathJax = tagLower === 'mjx-container' || node.classList.contains('MathJax');
+
+  if (isKaTeX || isMathML || isMathJax) {
+    // 1. Check for explicit TeX annotation
+    const texAnnotation = node.querySelector('annotation[encoding="application/x-tex"], annotation[encoding="LaTeX"]');
+    if (texAnnotation && texAnnotation.textContent) {
+      const tex = texAnnotation.textContent.trim();
+      const isDisplay = node.classList.contains('katex-display') || node.getAttribute('display') === 'block';
+      return isDisplay ? `\n$$\n${tex}\n$$\n` : `$${tex}$`;
+    }
+
+    // 2. Check for data-tex, data-math, or alttext attributes
+    const mathAttr = node.getAttribute('data-tex') ?? node.getAttribute('data-math') ?? node.getAttribute('alttext');
+    if (mathAttr) {
+      const isDisplay = node.getAttribute('display') === 'block' || node.classList.contains('katex-display');
+      return isDisplay ? `\n$$\n${mathAttr.trim()}\n$$\n` : `$${mathAttr.trim()}$`;
+    }
+  }
+
   return Array.from(node.childNodes, (child) => safeText(child, shouldSkip)).join(' ');
 }
 

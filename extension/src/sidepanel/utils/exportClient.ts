@@ -2,18 +2,21 @@ import {
   ExportPackageRequest,
   PackageValidationReport,
 } from '../../../../packages/schema';
+import { fetchWithTimeout } from '../../utils/fetchWithTimeout';
 
 const SERVICE_BASE_URL = 'http://127.0.0.1:8000';
 
 export async function exportRAGPackage(
-  payload: ExportPackageRequest
+  payload: ExportPackageRequest,
+  timeoutMs: number = 30000
 ): Promise<{ blob: Blob; filename: string }> {
-  const response = await fetch(`${SERVICE_BASE_URL}/export/package`, {
+  const response = await fetchWithTimeout(`${SERVICE_BASE_URL}/export/package`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(payload),
+    timeoutMs,
   });
 
   if (!response.ok) {
@@ -55,13 +58,17 @@ export function triggerBlobDownload(blob: Blob, filename: string): void {
   URL.revokeObjectURL(url);
 }
 
-export async function validatePackageBlob(blob: Blob): Promise<PackageValidationReport> {
-  const response = await fetch(`${SERVICE_BASE_URL}/package/validate`, {
+export async function validatePackageBlob(
+  blob: Blob,
+  timeoutMs: number = 30000
+): Promise<PackageValidationReport> {
+  const response = await fetchWithTimeout(`${SERVICE_BASE_URL}/package/validate`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/zip',
     },
     body: blob,
+    timeoutMs,
   });
 
   if (!response.ok) {
