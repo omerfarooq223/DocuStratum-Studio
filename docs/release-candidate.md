@@ -1,6 +1,6 @@
-# Day 10 — Release Candidate, Rehearsal, and Contingency Buffer
+# Release Candidate, Rehearsal, and Verification Runbook
 
-## 1. Day 10 Objective & Gate
+## 1. Release Objective & Acceptance Gate
 
 **Outcome:** A tagged, reproducible release candidate ready for live presentation and offline demonstration.
 
@@ -13,7 +13,7 @@
 
 ---
 
-## 2. Day 10 Operating Schedule
+## 2. Release Preparation Schedule
 
 | Time / Phase | Focus | State Transition & Output | Acceptance Gate |
 |---|---|---|---|
@@ -21,7 +21,7 @@
 | **Phase 2: Release Packaging & Verification (10:30 - 12:30)** | Build production bundle, generate sample export ZIP, verify referential integrity and SHA256 sums. | `dist/release/webrag-sample-rc1.zip` and `dist/SHA256SUMS.txt` created. | `python3 scripts/validate-package.py` returns 100% valid with 0 errors. |
 | **Phase 3: Demo Rehearsals (13:30 - 15:30)** | 5x rehearsal of 60-90s deterministic demo, 5x rehearsal of 2-min Groq demo, 2x 4-5 min technical walkthrough. | Smooth presentation timing, muscle memory, zero UI stumbles. | 5 consecutive clean runs across both tracks. |
 | **Phase 4: Contingency Buffer & Video Capture (15:30 - 17:00)** | Record backup screen video, pre-cache demo answer for explanation fallback, fix P0 blockers only. | Offline MP4/WebP recording saved in repo; fallback response verified. | Video verified readable at 1080p; backup path tested with WiFi disconnected. |
-| **Phase 5: Release Tagging & Final Sign-Off (17:00 - 18:00)** | Tag `v0.1.0-rc1`, compile release notes, update documentation and final checklist. | Tagged Git release with release notes. | Final sign-off against Day 10 acceptance criteria. |
+| **Phase 5: Release Tagging & Final Sign-Off (17:00 - 18:00)** | Tag `v0.1.0-rc1`, compile release notes, update documentation and final checklist. | Tagged Git release with release notes. | Final sign-off against release candidate acceptance criteria. |
 
 ---
 

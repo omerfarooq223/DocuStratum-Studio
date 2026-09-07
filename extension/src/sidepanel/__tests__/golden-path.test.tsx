@@ -9,7 +9,7 @@ const capture: CaptureResult = {
     id: 'cap_day9_fixture',
     url: 'https://fixture.test/docs',
     canonicalUrl: 'https://fixture.test/docs',
-    title: 'Day 9 Golden Path',
+    title: 'Golden Path Smoke Test',
     mode: 'page',
     timestamp: '2026-08-20T10:00:00.000Z',
     extractorVersion: 'webrag-dom/0.2.0',
@@ -48,7 +48,7 @@ const capture: CaptureResult = {
   ],
 };
 
-describe('Day 9 golden-path smoke test', () => {
+describe('Golden-path smoke test', () => {
   beforeEach(async () => {
     await clearDraftCapture();
     await saveDraftCapture(capture);
@@ -81,7 +81,7 @@ describe('Day 9 golden-path smoke test', () => {
   it('restores a capture and reaches review, chunk comparison, retrieval, and export', async () => {
     render(<App />);
 
-    await waitFor(() => expect(screen.getByText('Day 9 Golden Path')).toBeDefined());
+    await waitFor(() => expect(screen.getByText('Golden Path Smoke Test')).toBeDefined());
     await waitFor(() => expect(screen.getByText('HEALTHY')).toBeDefined());
     expect(screen.getByText('Access tokens expire after 3600 seconds.')).toBeDefined();
 

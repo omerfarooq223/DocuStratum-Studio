@@ -1,4 +1,4 @@
-# Day 9 — Reliability, Security, and Portfolio Readiness
+# Reliability, Security, and Production Hardening
 
 ## Delivered outcome
 
@@ -9,18 +9,18 @@ The golden path now has a repeatable integration smoke test, explicit local-serv
 | Failure or boundary | Expected behavior | Automated evidence |
 |---|---|---|
 | Service offline | Header shows `OFFLINE`; clicking it retries health checks | Existing side-panel health tests |
-| Malformed JSON contract | Structured `VALIDATION_ERROR` with request ID | `test_day_9_hardening.py` |
-| Request over 5 MB | HTTP 413 with a page/chunk reduction instruction | `test_day_9_hardening.py` |
+| Malformed JSON contract | Structured `VALIDATION_ERROR` with request ID | `test_hardening.py` |
+| Request over 5 MB | HTTP 413 with a page/chunk reduction instruction | `test_hardening.py` |
 | More than 1,000 blocks or 2,000 chunks | Request rejected before processing | Pydantic contract limits |
-| More than 50 LLM context chunks | Request rejected before provider use | `test_day_9_hardening.py` |
-| Oversized block/chunk/text | Friendly validation response; no model work starts | `test_day_9_hardening.py` |
+| More than 50 LLM context chunks | Request rejected before provider use | `test_hardening.py` |
+| Oversized block/chunk/text | Friendly validation response; no model work starts | `test_hardening.py` |
 | Corrupt persisted draft | Draft is ignored and the empty state is shown | Storage validation and tests |
 | Draft storage failure | Capture remains usable; no unhandled rejection | Storage utility behavior |
 | Provider stream failure | Evidence remains visible and a retryable generic error is streamed | LLM tests and guarded stream |
-| Invalid citation | Unsupported chunk ID is removed before rendering | Day 7 citation tests |
-| Export validation failure | Capture remains available and an actionable error is returned | Day 8 export tests |
+| Invalid citation | Unsupported chunk ID is removed before rendering | Citation validation tests |
+| Export validation failure | Capture remains available and an actionable error is returned | Export validation tests |
 | Changed live DOM | Saved-source preview and stale warning remain available | Retrieval debugger tests |
-| Extension reload | Last structurally valid capture is restored | Day 9 golden-path smoke test |
+| Extension reload | Last structurally valid capture is restored | Golden-path smoke test |
 
 ## Security changes
 
@@ -38,7 +38,7 @@ The golden path now has a repeatable integration smoke test, explicit local-serv
 Run:
 
 ```bash
-npm run smoke:day9
+npm run smoke
 ```
 
 Each run restores a saved capture and visits block review, deterministic chunk comparison, local retrieval, and portable export. The script requires three consecutive passes.
@@ -68,7 +68,7 @@ npm run benchmark:retrieval
 
 The command prints machine, operating system, Python, model, device, cold start, warm median, warm p95, fixture size, and sample count as JSON. Cold start includes model initialization and must never be combined with warm retrieval latency.
 
-### Recorded Day 9 evidence — 2026-08-20
+### Recorded Verification Evidence — 2026-08-20
 
 | Field | Result |
 |---|---:|

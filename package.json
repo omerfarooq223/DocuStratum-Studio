@@ -2,6 +2,9 @@
   "name": "webrag-studio",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
   "description": "WebRAG Studio - local-first Chrome extension side panel and FastAPI service for DOM capture, block review, chunking comparison, local vector retrieval, and grounded RAG.",
   "scripts": {
     "check": "bash scripts/check-all.sh",
@@ -12,7 +15,8 @@
     "test:chunking": "cd extension && npm run test:chunking",
     "test:retrieval": "cd extension && npm run test:retrieval",
     "test:service": "cd service && python3 -m pytest",
-    "smoke:day9": "bash scripts/smoke-day9.sh",
+    "smoke": "bash scripts/smoke-golden-path.sh",
+    "smoke:golden-path": "bash scripts/smoke-golden-path.sh",
     "benchmark:retrieval": "HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 PYTHONPATH=. .venv/bin/python scripts/benchmark-retrieval.py"
   },
   "keywords": [

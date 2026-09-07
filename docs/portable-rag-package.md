@@ -1,4 +1,4 @@
-# Day 8 — Build and Validate the Portable RAG Package
+# Build and Validate the Portable RAG Package
 
 ## 1. File Structure and Purpose
 
@@ -18,7 +18,7 @@ WebRAG/
 │   │   ├── similarity_search_example.py           # Downstream integration: re-embeds package chunks and runs similarity search
 │   │   └── chroma_import_example.py               # Downstream integration: imports package chunks into a local ChromaDB collection
 │   ├── main.py                                    # Endpoints: POST /export/package, POST /package/validate
-│   └── tests/test_day_8_export.py                 # Backend test suite (checksums, referential integrity, round-trip, vector omission, endpoints)
+│   └── tests/test_export.py                       # Backend test suite (checksums, referential integrity, round-trip, vector omission, endpoints)
 ├── extension/
 │   └── src/sidepanel/
 │       ├── utils/
@@ -27,7 +27,7 @@ WebRAG/
 │       │   └── ExportPackagePanel.tsx             # Side panel tab for package review, ZIP export, file integrity checks, and Python snippets
 │       └── __tests__/
 │           └── export-package.test.tsx            # Component unit tests for export actions and validation reporting
-└── docs/day-8-portable-rag-package.md             # This architecture, format specification, and validation guide
+└── docs/portable-rag-package.md                   # This architecture, format specification, and validation guide
 ```
 
 ---

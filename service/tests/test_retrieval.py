@@ -49,6 +49,7 @@ def test_model_status_endpoint():
     assert data["dimension"] == 384
     assert data["isLocal"] is True
 
+@pytest.mark.real_model
 def test_embed_texts_and_normalization():
     texts = [
         "WebRAG Studio provides local vector retrieval without external network calls.",
@@ -69,6 +70,7 @@ def test_embed_texts_and_normalization():
     np.testing.assert_almost_equal(np.linalg.norm(vec1), 1.0, decimal=4)
     np.testing.assert_almost_equal(np.linalg.norm(vec2), 1.0, decimal=4)
 
+@pytest.mark.real_model
 def test_embed_cache_hits():
     chunk = create_sample_chunk("chunk-cache-1", "Local caching prevents redundant neural embedding computation.", 0)
     
@@ -86,6 +88,7 @@ def test_embed_cache_hits():
     assert data2["computedCount"] == 0
     assert data1["embeddings"] == data2["embeddings"]
 
+@pytest.mark.real_model
 def test_search_retrieves_top_5_results_with_provenance():
     chunks = [
         create_sample_chunk(
@@ -153,6 +156,7 @@ def test_search_retrieves_top_5_results_with_provenance():
     assert data_arch["results"][0]["chunkId"] == "chunk-arch"
     assert data_arch["results"][0]["rank"] == 1
 
+@pytest.mark.real_model
 def test_search_deterministic_tie_breaking():
     chunks = [
         create_sample_chunk("chunk-a", "Identical content block for tie testing", 0),
@@ -175,6 +179,7 @@ def test_search_deterministic_tie_breaking():
     for r in runs:
         assert r == ["chunk-a", "chunk-b", "chunk-c"]
 
+@pytest.mark.real_model
 def test_search_strategy_filter():
     chunks = [
         create_sample_chunk("chunk-rec-1", "Fast vector embeddings search", 0, strategy="recursive"),

@@ -1,4 +1,4 @@
-# Day 7 — Grounded LLM Answers and Provider Resilience
+# Grounded LLM Answers and Provider Resilience
 
 ## 1. File structure and purpose
 
@@ -18,7 +18,7 @@ WebRAG/
 │   │   ├── groq.py                                # GroqProvider adapter with async httpx, streaming, timeouts, and rate limit recovery
 │   │   └── mock_provider.py                       # Deterministic MockLLMProvider for offline tests and keyless fallback
 │   ├── main.py                                    # Endpoints: GET /llm/status, POST /llm/answer, POST /llm/answer/stream
-│   └── tests/test_day_7_llm.py                    # Backend test suite (status, valid citations, hallucination rejection, injection defense, streaming)
+│   └── tests/test_llm.py                          # Backend test suite (status, valid citations, hallucination rejection, injection defense, streaming)
 ├── fixtures/
 │   └── prompt-injection-fixture.html              # Adversarial prompt-injection test fixture with simulated system overrides
 ├── extension/
@@ -34,7 +34,7 @@ WebRAG/
 │   │           └── grounded-answer.test.tsx       # Vitest component tests for streaming tokens, citation clicks, and offline notice
 │   └── package.json                               # Build & test scripts
 ├── .env.example                                   # Root environment setup guide
-└── docs/day-7-grounded-llm-answers.md             # This architecture, security, and verification runbook
+└── docs/grounded-llm-answers.md                   # This architecture, security, and verification runbook
 ```
 
 ---
@@ -227,7 +227,7 @@ npm test
 
 ## 6. Acceptance Gate Checklist
 
-| Day 7 Acceptance Requirement | Implementation & Proof | Status |
+| Acceptance Requirement | Implementation & Proof | Status |
 |---|---|---|
 | Grounded answers with resolvable citations | `GroqProvider` + `extract_and_validate_citations` + `GroundedAnswerPanel` | ✅ PASSED |
 | Explicit insufficient-evidence response on unanswerable questions | `SYSTEM_INSTRUCTION` + `insufficientEvidence` flag + warning banner | ✅ PASSED |

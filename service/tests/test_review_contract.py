@@ -1,10 +1,10 @@
 import pytest
 from service.models import CaptureResultModel, BlockModel, CaptureModel
 
-def test_day_3_capture_result_with_block_inclusion_states():
+def test_capture_result_with_block_inclusion_states():
     payload = {
         "capture": {
-            "id": "cap-day3-001",
+            "id": "cap-review-001",
             "url": "https://docs.webrag.local/auth",
             "title": "WebRAG Studio Auth Docs",
             "mode": "element",
@@ -47,7 +47,7 @@ def test_day_3_capture_result_with_block_inclusion_states():
     }
 
     result = CaptureResultModel.model_validate(payload)
-    assert result.capture.id == "cap-day3-001"
+    assert result.capture.id == "cap-review-001"
     assert len(result.blocks) == 2
     assert result.blocks[0].included is True
     assert result.blocks[1].included is False

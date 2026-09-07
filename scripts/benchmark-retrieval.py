@@ -1,4 +1,4 @@
-"""Reproducible local retrieval benchmark for the Day 9 evidence record."""
+"""Reproducible local retrieval benchmark for performance and latency verification."""
 
 from __future__ import annotations
 

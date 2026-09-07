@@ -2,7 +2,7 @@
 set -e
 
 echo "========================================================"
-echo "    WebRAG Studio - Day 10 Release Candidate Verification"
+echo "    WebRAG Studio - Release Candidate Verification"
 echo "========================================================"
 echo ""
 
@@ -28,8 +28,8 @@ npm run build
 cd ..
 
 echo ""
-echo "[Phase 4/5] Running Day 9 Golden Path Smoke Test..."
-bash scripts/smoke-day9.sh
+echo "[Phase 4/5] Running Golden Path Smoke Test..."
+bash scripts/smoke-golden-path.sh
 
 echo ""
 echo "[Phase 5/5] Exporting & Validating Sample RAG Package..."
@@ -170,5 +170,5 @@ cd ..
 echo "Checksums written to dist/SHA256SUMS.txt"
 echo ""
 echo "========================================================"
-echo "    ✅ ALL DAY 10 RELEASE CANDIDATE CHECKS PASSED!"
+echo "    ✅ ALL RELEASE CANDIDATE CHECKS PASSED!"
 echo "========================================================"

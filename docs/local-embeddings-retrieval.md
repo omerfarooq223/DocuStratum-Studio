@@ -1,4 +1,4 @@
-# Day 5 — Local Embeddings and Vector Retrieval
+# Local Embeddings and Vector Retrieval
 
 ## 1. File structure and purpose
 
@@ -12,7 +12,7 @@ WebRAG/
 │   ├── models.py                              # Pydantic models for SearchRequest, SearchResponse, EmbedResponse, ModelStatusResponse
 │   ├── embeddings.py                          # EmbeddingEngine singleton, all-MiniLM-L6-v2, caching, cosine similarity, tie-breaking
 │   ├── main.py                                # Endpoints: GET /model/status, POST /embed, POST /search with validation handlers
-│   └── tests/test_day_5_retrieval.py          # Python retrieval test suite (normalization, cache, top-5 ranking, tie-breaking)
+│   └── tests/test_retrieval.py                # Python retrieval test suite (normalization, cache, top-5 ranking, tie-breaking)
 ├── extension/
 │   ├── package.json                           # test:retrieval vitest command
 │   └── src/
@@ -26,7 +26,7 @@ WebRAG/
 │           │   └── SearchResultCard.tsx       # Individual result card: rank, cosine score meter, strategy, heading path, excerpt, source block tags
 │           └── __tests__/
 │               └── retrieval.test.tsx         # Vitest component tests for SearchResultCard and RetrievalView
-├── docs/day-5-local-embeddings-retrieval.md   # This design, vector mathematics, and validation runbook
+├── docs/local-embeddings-retrieval.md         # This design, vector mathematics, and validation runbook
 └── package.json                               # Root test:retrieval command
 ```
 
@@ -155,7 +155,7 @@ bash scripts/check-all.sh
 ```
 
 ### Test Coverage Summary:
-- **Backend (`service/tests/test_day_5_retrieval.py`)**:
+- **Backend (`service/tests/test_retrieval.py`)**:
   - `test_model_status_endpoint`: Validates model status, dimensions (384), and local flags.
   - `test_embed_texts_and_normalization`: Validates unit L2 norm ($||\vec{v}||_2 \approx 1.0$).
   - `test_embed_cache_hits`: Verifies repeated content hashes reuse cached embeddings without re-encoding.

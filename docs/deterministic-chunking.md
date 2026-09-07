@@ -1,4 +1,4 @@
-# Day 4 — Deterministic chunking and comparison
+# Deterministic Chunking and Strategy Comparison
 
 ## 1. File structure and purpose
 
@@ -9,7 +9,7 @@ WebRAG/
 │   └── chunk.json                            # JSON Schema for the complete serialized chunk contract
 ├── service/
 │   ├── models.py                             # Matching Pydantic ChunkModel boundary
-│   └── tests/test_day_4_chunk_contract.py    # Python-side contract round-trip
+│   └── tests/test_chunk_contract.py          # Python-side contract round-trip
 ├── extension/
 │   ├── package.json                          # Focused test:chunking command
 │   ├── package-lock.json                     # Reproducible UI test dependency graph
@@ -35,11 +35,11 @@ WebRAG/
 │           └── __tests__/
 │               ├── chunk-comparison.test.tsx # Comparison, settings, focus, click relationship tests
 │               └── sidepanel.test.tsx        # Review-panel multi-block highlight test
-├── docs/day-4-deterministic-chunking.md       # This design and validation runbook
+├── docs/deterministic-chunking.md            # This design and validation runbook
 └── package.json                               # Root test:chunking command
 ```
 
-All chunking is a pure, browser-local transformation over Day 3's reviewed blocks. The extension does not need the FastAPI service to compare strategies. The shared JSON/Pydantic contract lets Day 5 send the chosen chunks to the local embedding service without translating their provenance.
+All chunking is a pure, browser-local transformation over reviewed blocks. The extension does not need the FastAPI service to compare strategies. The shared JSON/Pydantic contract lets the extension send the chosen chunks to the local embedding service without translating their provenance.
 
 ## 2. Complete implementation and component behavior
 

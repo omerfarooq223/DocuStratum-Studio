@@ -1,4 +1,4 @@
-# WebRAG Studio - 10-Day Production-Minded MVP Plan
+# WebRAG Studio — System Architecture & Production Specification
 
 ## 1. Delivery target
 
@@ -12,11 +12,11 @@ Build a reliable, portfolio-ready local MVP that demonstrates this complete work
 6. Click a result to highlight its exact source passage.
 7. Export a reproducible ZIP package and load it with a small Python example.
 
-The project is production-minded, but intentionally not production-scale. It should communicate disciplined engineering through predictable behavior, validation, useful errors, privacy-aware defaults, tests, documentation, and a repeatable demo.
+The project is production-minded, but intentionally not production-scale. It communicates disciplined engineering through predictable behavior, validation, useful errors, privacy-aware defaults, tests, documentation, and a repeatable demo.
 
 ## 2. Constraints and assumptions
 
-- One developer, 10 focused working days, approximately 6-8 hours per day.
+- Full-stack local-first execution with production-minded engineering rigor.
 - Runs entirely on the developer's machine.
 - No paid plan, hosted database, OAuth application, or billing setup is required.
 - A user-supplied Groq API key is available for LLM features. The integration must also accept any OpenAI-compatible endpoint through the same provider interface.
@@ -63,7 +63,7 @@ The project is production-minded, but intentionally not production-scale. It sho
 - Incremental re-embedding and full version-diff UI.
 - Qdrant, pgvector, Pinecone, Weaviate, LlamaIndex, Haystack, and MCP integrations.
 - OCR, PDF ingestion, screenshots, image understanding, and JavaScript-heavy site automation.
-- Autonomous browsing/decision-making agents. A grounded single-page RAG answer flow is included, but open-ended agent orchestration is not a ten-day feature.
+- Autonomous browsing/decision-making agents. A grounded single-page RAG answer flow is included, but open-ended agent orchestration is explicitly deferred.
 
 ## 4. Architecture that fits the deadline
 
@@ -110,9 +110,9 @@ The MVP is done only when all of the following pass on a clean local setup:
 - Unit and integration tests pass; the golden-path browser smoke test passes three consecutive times.
 - The retrieval/debugging demo can be completed in 60-90 seconds without editing code or relying on a live third-party service; the enhanced 2-minute demo adds a live Groq-grounded answer when connectivity is available.
 
-## 6. Ten-day execution plan
+## 6. Phased execution roadmap
 
-### Day 1 - Lock the contract and build the walking skeleton
+### Phase 1 - Lock the contract and build the walking skeleton
 
 **Outcome:** The side panel talks to a healthy local service through a versioned contract.
 
@@ -135,7 +135,7 @@ Acceptance gate:
 
 Do not spend time on visual polish beyond a clean layout and readable status states.
 
-### Day 2 - Implement safe DOM capture and provenance
+### Phase 2 - Implement safe DOM capture and provenance
 
 **Outcome:** All three capture modes return normalized, traceable blocks.
 
@@ -155,7 +155,7 @@ Acceptance gate:
 - Repeating a capture on unchanged content produces the same normalized block content and IDs.
 - Selection, element, and page capture each work on the fixture page and one public documentation page.
 
-### Day 3 - Build the review and cleaned-content experience
+### Phase 3 - Build the review and cleaned-content experience
 
 **Outcome:** The user can see and correct extraction before any processing occurs.
 
@@ -175,7 +175,7 @@ Acceptance gate:
 - Unsupported/restricted pages fail safely without stale content from the previous capture.
 - Keyboard focus, labels, contrast, and scroll behavior support a smooth demo.
 
-### Day 4 - Implement deterministic chunking and comparison
+### Phase 4 - Implement deterministic chunking and comparison
 
 **Outcome:** Two chunking strategies are visible, explainable, and reproducible.
 
@@ -195,7 +195,7 @@ Acceptance gate:
 - Clicking a chunk highlights all contributing blocks in the review panel.
 - The user can explain the visible difference between recursive and heading-aware output in under 20 seconds.
 
-### Day 5 - Add local embeddings and retrieval
+### Phase 5 - Add local embeddings and retrieval
 
 **Outcome:** A query retrieves the top five chunks locally with transparent metadata.
 
@@ -217,9 +217,9 @@ Acceptance gate:
 
 Fallback rule:
 
-- If model integration consumes more than half a day, freeze the UI and service contract, use a smaller supported local model, and drop P1 persistence/metrics. Do not introduce a paid API.
+- If model integration is blocked, freeze the UI and service contract, use a smaller supported local model, and drop optional persistence/metrics. Do not introduce a paid API.
 
-### Day 6 - Complete the visual retrieval debugger
+### Phase 6 - Complete the visual retrieval debugger
 
 **Outcome:** Retrieval failures can be inspected from result to exact source passage.
 
@@ -241,7 +241,7 @@ Acceptance gate:
 - Generated questions are editable, retain their expected source block IDs, and are never silently treated as ground truth.
 - Latency is reported honestly as local measured time, not a fabricated benchmark.
 
-### Day 7 - Add grounded LLM answers and provider resilience
+### Phase 7 - Add grounded LLM answers and provider resilience
 
 **Outcome:** The same retrieval evidence can produce a useful answer with verifiable citations, without hiding the underlying chunks.
 
@@ -264,7 +264,7 @@ Acceptance gate:
 - Logs and exports contain no API key, authorization header, or complete prompt by default.
 - With Groq disabled, capture through export still works and the UI clearly explains which optional actions are unavailable.
 
-### Day 8 - Build and validate the portable RAG package
+### Phase 8 - Build and validate the portable RAG package
 
 **Outcome:** The project produces a vendor-neutral artifact that another script can consume.
 
@@ -282,7 +282,7 @@ Work:
 - Include format version, source identity, capture hash/time, extractor version, chunker settings, embedding metadata, optional generation metadata, prompt version, file checksums, and license/source-responsibility note.
 - Validate every file before ZIP creation and reject exports with dangling block references.
 - Write a dependency-light Python iterator/loader and one example similarity-search integration.
-- Add an optional local Chroma import example if P0 export validation is complete by midday.
+- Add an optional local Chroma import example if export validation is complete.
 - Add a round-trip test: export, unzip, validate, load, and compare counts/hashes.
 
 Acceptance gate:
@@ -293,13 +293,13 @@ Acceptance gate:
 - Re-exporting unchanged content/settings produces equivalent logical data; volatile timestamps may differ only where documented.
 - Vectors are omitted from the portable source of truth; the manifest records how to regenerate them.
 
-### Day 9 - Reliability, security, product polish, and portfolio evidence
+### Phase 9 - Reliability, security, product polish, and portfolio evidence
 
 **Outcome:** The golden path survives realistic failures and a reviewer can understand and run it without guidance.
 
 Work:
 
-- Finish integration tests across capture fixtures, service schemas, chunking, retrieval, highlighting, LLM answers, and export. Unit and contract tests are added continuously on Days 1-8, not postponed to this day.
+- Finish integration tests across capture fixtures, service schemas, chunking, retrieval, highlighting, LLM answers, and export.
 - Add a browser smoke test for the local fixture golden path where automation is stable; retain a concise manual checklist as backup.
 - Test service-offline, malformed payload, empty capture, oversized page, model-not-cached, changed DOM, provider timeout/rate limit, invalid citations, export failure, and extension reload cases.
 - Add request-size and block-count limits with friendly explanations.
@@ -321,13 +321,13 @@ Acceptance gate:
 - Benchmarks separate local retrieval latency from network-dependent LLM latency and state hardware, fixture size, model, method, and sample count.
 - Known limitations are visible and framed as deliberate boundaries, not hidden defects.
 
-### Day 10 - Release candidate, rehearsal, and contingency buffer
+### Phase 10 - Release candidate, rehearsal, and contingency buffer
 
 **Outcome:** A tagged, reproducible release candidate is ready for demonstration.
 
 Work:
 
-- Freeze features at the start of the day.
+- Freeze features at the start of release preparation.
 - Run the full clean-install, test, package, and demo checklist.
 - Test on the local fixture first and one public documentation page second.
 - Fix only release-blocking defects: data loss, crash, broken setup, incorrect retrieval mapping, invalid export, or confusing demo-state failure.
@@ -340,18 +340,17 @@ Acceptance gate:
 - The complete demo passes five consecutive rehearsals.
 - The release artifacts can be rebuilt from the tagged source using documented commands.
 - The sample ZIP passes schema, relationship, and checksum validation.
-- A rollback point exists before any last-day fix.
-- No P1/P2 feature is allowed to delay the release candidate.
+- A rollback point exists before any final fix.
+- No optional feature is allowed to delay the release candidate.
 
-## 7. Daily operating rhythm
+## 7. Engineering operating principles
 
-Use the same rhythm each day:
+Use disciplined operating principles:
 
-- **First 15 minutes:** choose one measurable daily outcome and confirm the previous build still passes.
-- **Main build block:** implement only work required for that day's acceptance gate.
-- **Midday integration:** merge the complete vertical slice; do not leave extension and service work disconnected until evening.
-- **Final 60-90 minutes:** test, fix the highest-risk defect, update the decision log, and record a 20-30 second proof clip or screenshot.
-- **Stop rule:** if the acceptance gate is not met, move optional work out of scope before extending the day.
+- **Cycle Start:** confirm the previous build passes.
+- **Main build block:** implement focused vertical slices against acceptance gates.
+- **Continuous integration:** merge and test complete vertical slices; do not leave extension and service work disconnected.
+- **Verification:** test, fix highest-risk defects, and update technical documentation.
 
 Track defects by release impact:
 
@@ -389,7 +388,7 @@ If Groq is unavailable, skip steps 7-8 and run the deterministic 60-90 second re
 - Reproducible fixtures, objective retrieval checks, and clean-install verification.
 - Honest scope boundaries and an offline backup demo.
 
-These details show a production mindset without pretending the ten-day MVP has cloud-scale infrastructure.
+These details show a production mindset without cloud-scale infrastructure overhead.
 
 ## 10. Scope-reduction ladder
 
@@ -428,6 +427,6 @@ The project is not artificially restricted to paid products. New capabilities ar
 3. Self-hosted open-source service.
 4. User-supplied free-tier API behind a replaceable adapter.
 
-Useful post-release adapters include local Ollama models, Chroma, Qdrant in local mode, FAISS, LlamaIndex, Haystack, LangChain, local rerankers, MCP resources, GitHub Actions for public-repository checks, and additional OpenAI-compatible inference providers. They should be added one vertical slice at a time with the same contracts, provenance, tests, and failure handling as the ten-day release.
+Useful post-release adapters include local Ollama models, Chroma, Qdrant in local mode, FAISS, LlamaIndex, Haystack, LangChain, local rerankers, MCP resources, GitHub Actions for public-repository checks, and additional OpenAI-compatible inference providers. They should be added one vertical slice at a time with the same contracts, provenance, tests, and failure handling as the core release.
 
-Free availability alone is not a reason to put a feature into the ten-day critical path. Accounts, quotas, network latency, hardware requirements, and provider terms can still break a live demo. The architecture therefore permits these integrations without making any one of them mandatory.
+Free availability alone is not a reason to put a feature into the core critical path. Accounts, quotas, network latency, hardware requirements, and provider terms can still break a live demo. The architecture therefore permits these integrations without making any one of them mandatory.

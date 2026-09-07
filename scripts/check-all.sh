@@ -14,7 +14,11 @@ else
 fi
 
 echo "[1/2] Running Python Backend Service Tests..."
-PYTHONPATH=. $PYTEST service/tests -v
+if [ "$RUN_REAL_MODEL" = "1" ]; then
+  $PYTEST service/tests -v
+else
+  $PYTEST service/tests -v -m "not real_model"
+fi
 
 echo "[2/2] Running DOM Capture Tests & Extension Build..."
 if [ -d "extension/node_modules" ]; then

@@ -1,4 +1,4 @@
-# Day 6 — Complete Visual Retrieval Debugger
+# Visual Retrieval Debugger & Provenance Traceability
 
 ## 1. File structure and purpose
 
@@ -14,7 +14,7 @@ WebRAG/
 │   ├── main.py                                    # Endpoints: POST /retrieval/query, POST /evaluation/draft-questions
 │   └── tests/test_retrieval_service.py            # Backend test suite for retrieval query ranking and question generation
 ├── fixtures/
-│   └── day6-eval-questions.json                   # Curated benchmark questions comparing chunking strategies on demo fixture
+│   └── eval-questions.json                        # Curated benchmark questions comparing chunking strategies on demo fixture
 ├── extension/
 │   ├── src/
 │   │   ├── content/
@@ -38,7 +38,7 @@ WebRAG/
 │   │           ├── retrieval-debugger.test.tsx    # Vitest component tests for query run, GT badge, curated questions, draft review
 │   │           └── evaluation-metrics.test.ts     # Unit tests for Hit@1, Hit@3, Hit@5, MRR, and aggregate metrics formulas
 │   └── package.json                               # Focused test & build scripts
-└── docs/day-6-visual-retrieval-debugger.md        # This technical specification, mathematics, and verification runbook
+└── docs/visual-retrieval-debugger.md              # This technical specification, mathematics, and verification runbook
 ```
 
 ---
@@ -292,11 +292,11 @@ npm test
 
 ## 6. Acceptance Gate Checklist
 
-| Day 6 Acceptance Requirement | Implementation & Proof | Status |
+| Acceptance Requirement | Implementation & Proof | Status |
 |---|---|---|
 | Every fixture retrieval result resolves to a live or saved highlight | Content script `highlightTargetInDom` with CSS selector & TreeWalker textQuote resolution | ✅ PASSED |
 | Changed/missing elements never crash navigation and are visibly marked stale | Content divergence check in `highlighter.ts` + `StaleSourceWarning` + `SavedBlockPreviewModal` | ✅ PASSED |
-| At least three curated questions compare both chunkers and persist their results | Pre-loaded curated questions in `RetrievalDebugger.tsx` and `fixtures/day6-eval-questions.json` | ✅ PASSED |
+| At least three curated questions compare both chunkers and persist their results | Pre-loaded curated questions in `RetrievalDebugger.tsx` and `fixtures/eval-questions.json` | ✅ PASSED |
 | Generated questions are editable, retain source block IDs, and require user review | `TestQuestionManager.tsx` LLM Draft Review Queue with status `draft` and required acceptance | ✅ PASSED |
 | Latency is reported honestly as local measured time | End-to-end timing via `performance.now()` in `evaluationMetrics.ts` and `RetrievalDebugger.tsx` | ✅ PASSED |
 | Full monorepo quality gate passes | Automated test script passes all Python service tests, extension tests, and Vite build | ✅ PASSED |

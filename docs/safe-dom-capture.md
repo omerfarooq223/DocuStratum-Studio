@@ -1,8 +1,8 @@
-# Day 2 — Safe DOM capture and provenance
+# Safe DOM Capture and Provenance Engine
 
 ## Outcome and invariants
 
-Day 2 produces a `CaptureResult` containing capture metadata and an ordered list of normalized semantic blocks. Selection, element, and page modes all converge on the same normalizer, exclusion boundary, hash function, and anchor format.
+Safe DOM capture produces a `CaptureResult` containing capture metadata and an ordered list of normalized semantic blocks. Selection, element, and page modes all converge on the same normalizer, exclusion boundary, hash function, and anchor format.
 
 The implementation keeps these invariants:
 
@@ -32,9 +32,9 @@ flowchart LR
 
 **Build:** Add `TextQuote`, `BlockAttributes`, the expanded `SourceAnchor`, and `CaptureResult` to the TypeScript, JSON Schema, and Pydantic contracts.
 
-**Why:** The extraction layer and later service/UI layers need one serializable boundary. Structural data such as table cells must not be reconstructed from display Markdown in Day 3 or Day 4.
+**Why:** The extraction layer and later service/UI layers need one serializable boundary. Structural data such as table cells must not be reconstructed from display Markdown downstream.
 
-**Connection:** Every subsequent step returns this contract; Day 3 can persist and review it without depending on browser DOM APIs.
+**Connection:** Every subsequent step returns this contract; the side panel can persist and review it without depending on browser DOM APIs.
 
 ### 2. Establish the safe text boundary
 
@@ -98,9 +98,9 @@ flowchart LR
 
 **Why:** Browser extraction regressions are subtle and often caused by harmless-looking traversal changes. A golden projection makes semantic changes explicit in review.
 
-**Connection:** The same fixture remains useful for Day 3 rendering, Day 4 chunk boundaries, and Day 6 highlighting.
+**Connection:** The same fixture remains useful for review rendering, chunk boundaries, and source highlighting.
 
-## Complete Day 2 file structure
+## Complete Safe DOM Capture file structure
 
 ```text
 WebRAG/
@@ -134,13 +134,13 @@ WebRAG/
 │           ├── page.ts                  # Landmark and density page capture
 │           └── __tests__/
 │               ├── setup.ts             # Web Crypto setup for jsdom
-│               ├── capture.test.ts       # Complete Day 2 acceptance suite
+│               ├── capture.test.ts       # Complete capture acceptance suite
 │               ├── capture.live.test.ts  # Opt-in MDN validation using live HTML
 │               └── fixtures/
 │                   ├── golden-page.html  # Supported + hostile edge cases
 │                   └── golden-page.blocks.json # Expected semantic projection
 ├── docs/
-│   └── day-2-safe-dom-capture.md         # This implementation/runbook
+│   └── safe-dom-capture.md               # This implementation/runbook
 ├── scripts/
 │   └── check-all.sh                      # Service, capture tests, extension build
 └── package.json                          # Root test:capture command
@@ -209,7 +209,7 @@ Avoid adding broad selectors such as every `aside`, `header`, or class containin
 
 ## Test strategy and fixtures
 
-Run the Day 2 gate:
+Run the capture quality gate:
 
 ```bash
 npm run test:capture
@@ -254,7 +254,7 @@ Default tests deliberately avoid the network. The opt-in live test fetches the c
 
 ### Public documentation validation
 
-Use MDN's [SubtleCrypto.digest documentation](https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/digest) as the Day 2 real-world target. It contains a semantic main region, heading hierarchy, prose, lists, code examples, and tables.
+Use MDN's [SubtleCrypto.digest documentation](https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/digest) as the real-world validation target. It contains a semantic main region, heading hierarchy, prose, lists, code examples, and tables.
 
 1. Run `npm run build:extension` and load `extension/dist` as an unpacked extension.
 2. Open the MDN target and open the WebRAG side panel/background inspection console.
@@ -269,7 +269,7 @@ Record the tested MDN page URL, date, Chrome version, extractor version, block c
 
 **Validation record (2026-08-13):** The current MDN page resolved with the title `SubtleCrypto: digest() method - Web APIs | MDN` and exposed a semantic `main` containing H1–H3 sections, prose, lists, JavaScript examples, callouts, and an algorithm table. The opt-in exact-module test passed for page, selection, and element modes, including page recapture idempotency. The picker interaction/cleanup remains deterministic fixture coverage because loading unpacked extensions is outside the live-HTML test harness.
 
-## Day 1 integration checklist
+## Architecture integration checklist
 
 - [x] Content capture runs in the existing MV3 content script; no long-lived state was added to the service worker.
 - [x] Runtime results match the shared TypeScript/JSON/Pydantic contract.
@@ -278,16 +278,16 @@ Record the tested MDN page URL, date, Chrome version, extractor version, block c
 - [x] The local service remains optional for capture, so a service outage cannot lose the user's browser extraction.
 - [x] The root quality script runs service tests, capture tests, type checking, and the production bundle.
 
-## Day 3 preparation checklist
+## Review and preview preparation checklist
 
-- [ ] Add side-panel actions that issue the four content-script messages and listen for picker events.
-- [ ] Validate incoming `CaptureResult` before replacing the current draft.
-- [ ] Persist the latest valid result in IndexedDB; never persist live DOM references.
-- [ ] Render blocks in array order with type, heading path, source preview, and include/exclude state.
-- [ ] Generate Markdown from block type + attributes; do not re-scrape the page.
-- [ ] Treat `included` as review state. Preserve original hashes/IDs when toggling it; compute downstream input hashes separately.
-- [ ] Clear stale results before a new request and model empty/restricted/error states explicitly.
-- [ ] Preserve `sourceAnchor` unchanged for Day 6 live-page highlighting.
+- [x] Add side-panel actions that issue the four content-script messages and listen for picker events.
+- [x] Validate incoming `CaptureResult` before replacing the current draft.
+- [x] Persist the latest valid result in storage; never persist live DOM references.
+- [x] Render blocks in array order with type, heading path, source preview, and include/exclude state.
+- [x] Generate Markdown from block type + attributes; do not re-scrape the page.
+- [x] Treat `included` as review state. Preserve original hashes/IDs when toggling it; compute downstream input hashes separately.
+- [x] Clear stale results before a new request and model empty/restricted/error states explicitly.
+- [x] Preserve `sourceAnchor` unchanged for live-page highlighting.
 - [ ] Add schema-validation tests at the side-panel boundary and persistence round-trip tests.
 
 ## Deliberate limits

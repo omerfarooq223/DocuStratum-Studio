@@ -1,7 +1,7 @@
 from service.models import ChunkModel
 
 
-def test_day_4_chunk_contract_records_overlap_spans_and_continuations():
+def test_chunk_contract_records_overlap_spans_and_continuations():
     chunk = ChunkModel.model_validate(
         {
             "id": "chk_0123456789abcdef01234567",
