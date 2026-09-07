@@ -1,7 +1,7 @@
 from service.models import CaptureResultModel
 
 
-def test_day_2_capture_result_contract_accepts_structured_provenance():
+def test_capture_result_contract_accepts_structured_provenance():
     result = CaptureResultModel.model_validate(
         {
             "capture": {

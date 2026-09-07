@@ -1,9 +1,16 @@
 import io
 import json
+import os
 import zipfile
 from typing import List, Dict, Any, Optional, Set, Union
 from pathlib import Path
 
+from service.limits import (
+    MAX_ZIP_MEMBERS,
+    MAX_ZIP_TOTAL_UNCOMPRESSED_BYTES,
+    MAX_ZIP_SINGLE_FILE_BYTES,
+    MAX_ZIP_COMPRESSION_RATIO,
+)
 from service.models import (
     BlockModel,
     ChunkModel,
@@ -179,7 +186,98 @@ def validate_package_zip(
     else:
         zip_file = zipfile.ZipFile(zip_source)
 
+    infolist = zip_file.infolist()
     namelist = zip_file.namelist()
+
+    # 1. Member count check
+    if len(infolist) > MAX_ZIP_MEMBERS:
+        issues.append(
+            PackageValidationIssue(
+                severity="error",
+                file="manifest.json",
+                code="MAX_ZIP_MEMBERS_EXCEEDED",
+                message=f"ZIP archive contains {len(infolist)} entries, exceeding maximum allowed {MAX_ZIP_MEMBERS}.",
+            )
+        )
+        return PackageValidationReport(
+            valid=False,
+            totalFiles=len(infolist),
+            issues=issues,
+        )
+
+    # 2. Duplicate entry check
+    seen_names = set()
+    for info in infolist:
+        if info.filename in seen_names:
+            issues.append(
+                PackageValidationIssue(
+                    severity="error",
+                    file=info.filename,
+                    code="DUPLICATE_ZIP_ENTRY",
+                    message=f"Duplicate entry found in package ZIP: '{info.filename}'.",
+                )
+            )
+        seen_names.add(info.filename)
+
+    # 3. Path traversal / Zip Slip protection
+    for info in infolist:
+        fname = info.filename
+        if os.path.isabs(fname) or fname.startswith("/") or fname.startswith("\\"):
+            issues.append(
+                PackageValidationIssue(
+                    severity="error",
+                    file=fname,
+                    code="PATH_TRAVERSAL_DETECTED",
+                    message=f"ZIP entry '{fname}' uses an absolute path.",
+                )
+            )
+        parts = fname.replace("\\", "/").split("/")
+        if ".." in parts:
+            issues.append(
+                PackageValidationIssue(
+                    severity="error",
+                    file=fname,
+                    code="PATH_TRAVERSAL_DETECTED",
+                    message=f"ZIP entry '{fname}' contains directory traversal sequences.",
+                )
+            )
+
+    # 4. Header-level uncompressed size & compression ratio check
+    total_declared_uncompressed = 0
+    for info in infolist:
+        if info.is_dir():
+            continue
+        total_declared_uncompressed += info.file_size
+        if info.file_size > MAX_ZIP_SINGLE_FILE_BYTES:
+            issues.append(
+                PackageValidationIssue(
+                    severity="error",
+                    file=info.filename,
+                    code="FILE_SIZE_LIMIT_EXCEEDED",
+                    message=f"File '{info.filename}' declared size {info.file_size} exceeds {MAX_ZIP_SINGLE_FILE_BYTES} bytes limit.",
+                )
+            )
+        if info.compress_size > 0:
+            ratio = info.file_size / info.compress_size
+            if ratio > MAX_ZIP_COMPRESSION_RATIO:
+                issues.append(
+                    PackageValidationIssue(
+                        severity="error",
+                        file=info.filename,
+                        code="COMPRESSION_RATIO_EXCEEDED",
+                        message=f"File '{info.filename}' compression ratio {ratio:.1f}:1 exceeds maximum safe ratio {MAX_ZIP_COMPRESSION_RATIO}:1.",
+                    )
+                )
+
+    if total_declared_uncompressed > MAX_ZIP_TOTAL_UNCOMPRESSED_BYTES:
+        issues.append(
+            PackageValidationIssue(
+                severity="error",
+                file="manifest.json",
+                code="DECOMPRESSION_BOMB_EXCEEDED",
+                message=f"ZIP total declared uncompressed size {total_declared_uncompressed} exceeds limit of {MAX_ZIP_TOTAL_UNCOMPRESSED_BYTES} bytes.",
+            )
+        )
 
     # Check for forbidden vector dumps
     for name in namelist:
@@ -206,15 +304,38 @@ def validate_package_zip(
                 message="Package ZIP does not contain 'manifest.json' at root.",
             )
         )
+
+    if any(i.severity == "error" for i in issues):
         return PackageValidationReport(
             valid=False,
             totalFiles=len(namelist),
             issues=issues,
         )
 
+    # Safe decompression helper with byte limit enforcement
+    cumulative_decompressed_bytes = 0
+
+    def safe_read_member(member_path: str) -> bytes:
+        nonlocal cumulative_decompressed_bytes
+        chunks = []
+        member_bytes = 0
+        with zip_file.open(member_path) as zf:
+            while True:
+                chunk = zf.read(64 * 1024)
+                if not chunk:
+                    break
+                member_bytes += len(chunk)
+                cumulative_decompressed_bytes += len(chunk)
+                if member_bytes > MAX_ZIP_SINGLE_FILE_BYTES:
+                    raise ValueError(f"Decompressed file '{member_path}' exceeds single file limit of {MAX_ZIP_SINGLE_FILE_BYTES} bytes.")
+                if cumulative_decompressed_bytes > MAX_ZIP_TOTAL_UNCOMPRESSED_BYTES:
+                    raise ValueError(f"Total decompressed bytes exceed safety limit of {MAX_ZIP_TOTAL_UNCOMPRESSED_BYTES} bytes.")
+                chunks.append(chunk)
+        return b"".join(chunks)
+
     # Parse and validate manifest
-    manifest_bytes = zip_file.read("manifest.json")
     try:
+        manifest_bytes = safe_read_member("manifest.json")
         manifest_dict = json.loads(manifest_bytes.decode("utf-8"))
         manifest = PackageManifest.model_validate(manifest_dict)
     except Exception as e:
@@ -247,7 +368,19 @@ def validate_package_zip(
             )
             continue
 
-        actual_bytes = zip_file.read(file_entry.path)
+        try:
+            actual_bytes = safe_read_member(file_entry.path)
+        except ValueError as ve:
+            issues.append(
+                PackageValidationIssue(
+                    severity="error",
+                    file=file_entry.path,
+                    code="DECOMPRESSION_BOMB_EXCEEDED",
+                    message=str(ve),
+                )
+            )
+            return PackageValidationReport(valid=False, totalFiles=len(namelist), issues=issues)
+
         actual_len = len(actual_bytes)
         actual_sha = compute_sha256_bytes(actual_bytes)
 
@@ -293,7 +426,18 @@ def validate_package_zip(
     def read_jsonl(path: str) -> List[Dict[str, Any]]:
         if path not in namelist:
             return []
-        lines = zip_file.read(path).decode("utf-8").splitlines()
+        try:
+            lines = safe_read_member(path).decode("utf-8").splitlines()
+        except Exception as e:
+            issues.append(
+                PackageValidationIssue(
+                    severity="error",
+                    file=path,
+                    code="FILE_READ_ERROR",
+                    message=f"Failed to read '{path}': {str(e)}",
+                )
+            )
+            return []
         records = []
         for line_num, line in enumerate(lines, start=1):
             if not line.strip():

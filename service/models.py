@@ -119,7 +119,7 @@ class ChunkModel(BaseModel):
     overlap: Optional[ChunkOverlap] = None
     continuations: Optional[List[ChunkContinuation]] = None
 
-# Day 5 Embeddings & Vector Search Models
+# Embeddings & Vector Search Models
 class ModelStatusResponse(BaseModel):
     status: Literal["ready", "loading", "unloaded", "error"] = "ready"
     modelName: str = "all-MiniLM-L6-v2"
@@ -141,6 +141,8 @@ class EmbedResponse(BaseModel):
     cachedCount: int = 0
     computedCount: int = 0
 
+SearchMode = Literal["hybrid", "dense", "bm25"]
+
 class RetrievalResultModel(BaseModel):
     chunkId: str
     score: float = Field(ge=-1.0, le=1.0)
@@ -149,12 +151,17 @@ class RetrievalResultModel(BaseModel):
     headingPath: List[str] = Field(default_factory=list)
     excerpt: str
     sourceBlockIds: List[str] = Field(default_factory=list)
+    searchMode: Optional[str] = "hybrid"
+    denseScore: Optional[float] = None
+    bm25Score: Optional[float] = None
 
 class SearchRequest(BaseModel):
     query: str = Field(min_length=1, max_length=2000)
     chunks: List[ChunkModel] = Field(min_length=1, max_length=MAX_CHUNKS)
     topK: int = Field(default=5, ge=1, le=50)
     strategy: Optional[ChunkingStrategy] = None
+    searchMode: Optional[SearchMode] = "dense"
+    minScore: Optional[float] = None
 
 class SearchResponse(BaseModel):
     query: str
@@ -163,13 +170,16 @@ class SearchResponse(BaseModel):
     model: str = "all-MiniLM-L6-v2"
     dimension: int = 384
     totalCandidates: int
+    searchMode: Optional[str] = "hybrid"
 
-# Day 6 Retrieval Debugger & Evaluation Models
+# Retrieval Debugger & Evaluation Models
 class RetrievalQueryRequest(BaseModel):
     query: str = Field(min_length=1, max_length=2_000)
     strategy: ChunkingStrategy
     topK: int = Field(default=5, ge=1, le=20)
     chunks: List[ChunkModel] = Field(min_length=1, max_length=MAX_CHUNKS)
+    searchMode: Optional[SearchMode] = "hybrid"
+    minScore: Optional[float] = None
 
 class RetrievalResultItem(BaseModel):
     chunkId: str
@@ -179,10 +189,16 @@ class RetrievalResultItem(BaseModel):
     headingPath: List[str]
     excerpt: str
     sourceBlockIds: List[str]
+    searchMode: Optional[str] = "hybrid"
+    denseScore: Optional[float] = None
+    bm25Score: Optional[float] = None
 
 class RetrievalQueryResponse(BaseModel):
     results: List[RetrievalResultItem]
     executionTimeMs: float
+    searchMode: Optional[str] = "hybrid"
+    degraded: Optional[bool] = False
+    fallbackReason: Optional[str] = None
 
 class DraftQuestionsRequest(BaseModel):
     blocks: List[BlockModel] = Field(min_length=1, max_length=MAX_BLOCKS)
@@ -201,7 +217,7 @@ class TestQuestionModel(BaseModel):
 class DraftQuestionsResponse(BaseModel):
     questions: List[TestQuestionModel]
 
-# Day 7 Grounded LLM Answers & Provider Models
+# Grounded LLM Answers & Provider Models
 LLMStatusType = Literal["configured", "unconfigured", "error", "disabled"]
 
 class LLMProviderStatusResponse(BaseModel):
@@ -253,7 +269,7 @@ class AnswerStreamEventModel(BaseModel):
     promptVersion: Optional[str] = None
     error: Optional[str] = None
 
-# Day 8 Portable RAG Package Models
+# Portable RAG Package Models
 class ManifestFileEntry(BaseModel):
     path: str
     sha256: str

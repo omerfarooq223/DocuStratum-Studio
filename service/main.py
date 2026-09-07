@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import uuid
 import time
 import json
@@ -8,7 +9,7 @@ import os
 import re
 from typing import Optional
 from datetime import datetime, timezone
-from fastapi import FastAPI, Request, HTTPException, status, Response
+from fastapi import FastAPI, Request, HTTPException, status, Response, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.exceptions import RequestValidationError
@@ -40,6 +41,7 @@ from service.question_generator import generate_draft_questions_from_blocks
 from service.llm import get_llm_provider
 from service.packager import PackageExporter, validate_package_zip
 from service.limits import MAX_REQUEST_BYTES
+from service.auth import verify_bearer_token, get_allowed_extension_ids
 
 
 logger = logging.getLogger("webrag.service")
@@ -68,15 +70,39 @@ app = FastAPI(
     version="0.1.0"
 )
 
-# Local development origins are explicit. Chrome extension origins are accepted
-# by scheme and valid MV3 extension-ID shape; arbitrary web origins are rejected.
+# Concurrency limiter to serialize/cap heavy synchronous model inference
+_inference_semaphore = asyncio.Semaphore(1)
+
+
+class RequestSizeLimitExceeded(Exception):
+    """Raised when an incoming request stream exceeds MAX_REQUEST_BYTES."""
+    pass
+
+
+def _is_request_size_exceeded(exc: BaseException) -> bool:
+    if isinstance(exc, RequestSizeLimitExceeded):
+        return True
+    if hasattr(exc, "exceptions"):
+        return any(_is_request_size_exceeded(sub) for sub in getattr(exc, "exceptions", []))
+    return False
+
+
+# Local development origins are explicit. Chrome extension origins can be restricted
+# via WEBRAG_ALLOWED_EXTENSION_IDS or match the standard MV3 extension-ID shape.
+_allowed_ids = get_allowed_extension_ids()
+if _allowed_ids:
+    _ids_pattern = "|".join([re.escape(eid) for eid in _allowed_ids])
+    _origin_regex = rf"(?:chrome-extension://(?:{_ids_pattern})|http://(?:127\.0\.0\.1|localhost):\d{{1,5}})"
+else:
+    _origin_regex = r"(?:chrome-extension://[a-p]{32}|http://(?:127\.0\.0\.1|localhost):\d{1,5})"
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[],
-    allow_origin_regex=r"(?:chrome-extension://[a-p]{32}|http://(?:127\.0\.0\.1|localhost):\d{1,5})",
+    allow_origin_regex=_origin_regex,
     allow_credentials=False,
     allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Content-Type", "X-Request-ID"],
+    allow_headers=["Content-Type", "X-Request-ID", "Authorization", "X-WebRAG-Token"],
 )
 
 @app.middleware("http")
@@ -84,6 +110,8 @@ async def add_request_metadata(request: Request, call_next):
     request_id = _safe_request_id(request.headers.get("X-Request-ID"))
     request.state.request_id = request_id
     started = time.perf_counter()
+
+    # Fast-path header check if Content-Length is present
     content_length = request.headers.get("content-length")
     if content_length:
         try:
@@ -99,12 +127,46 @@ async def add_request_metadata(request: Request, call_next):
                         )
                     ).model_dump(),
                 )
-            else:
-                response = await call_next(request)
+                response.headers["X-Request-ID"] = request_id
+                response.headers["X-Content-Type-Options"] = "nosniff"
+                response.headers.setdefault("Cache-Control", "no-store")
+                return response
         except ValueError:
-            response = await call_next(request)
-    else:
+            pass
+
+    # Enforce request size limit on actual received streaming bytes
+    bytes_received = 0
+    original_receive = request._receive
+
+    async def limited_receive():
+        nonlocal bytes_received
+        message = await original_receive()
+        if message.get("type") == "http.request":
+            body = message.get("body", b"")
+            bytes_received += len(body)
+            if bytes_received > MAX_REQUEST_BYTES:
+                raise RequestSizeLimitExceeded()
+        return message
+
+    request._receive = limited_receive
+
+    try:
         response = await call_next(request)
+    except Exception as exc:
+        if _is_request_size_exceeded(exc):
+            response = JSONResponse(
+                status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+                content=ErrorResponse(
+                    error=ErrorDetail(
+                        code="REQUEST_TOO_LARGE",
+                        message=f"Request exceeds the {MAX_REQUEST_BYTES // (1024 * 1024)} MB local-service limit. Reduce the captured page or chunk set and retry.",
+                        requestId=request_id,
+                        timestamp=datetime.now(timezone.utc).isoformat(),
+                    )
+                ).model_dump(),
+            )
+        else:
+            raise
 
     duration_ms = round((time.perf_counter() - started) * 1000, 2)
     response.headers["X-Request-ID"] = request_id
@@ -125,6 +187,23 @@ async def add_request_metadata(request: Request, call_next):
         **log_fields,
     )
     return response
+
+@app.exception_handler(RequestSizeLimitExceeded)
+async def request_size_exceeded_handler(request: Request, exc: RequestSizeLimitExceeded):
+    request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
+    now_iso = datetime.now(timezone.utc).isoformat()
+    return JSONResponse(
+        status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+        content=ErrorResponse(
+            error=ErrorDetail(
+                code="REQUEST_TOO_LARGE",
+                message=f"Request exceeds the {MAX_REQUEST_BYTES // (1024 * 1024)} MB local-service limit. Reduce the captured page or chunk set and retry.",
+                requestId=request_id,
+                timestamp=now_iso,
+            )
+        ).model_dump(),
+        headers={"X-Request-ID": request_id, "X-Content-Type-Options": "nosniff", "Cache-Control": "no-store"}
+    )
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
@@ -148,6 +227,9 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 async def starlette_http_exception_handler(request: Request, exc: StarletteHTTPException):
     request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
     now_iso = datetime.now(timezone.utc).isoformat()
+    headers = {"X-Request-ID": request_id}
+    if getattr(exc, "headers", None):
+        headers.update(exc.headers)
     return JSONResponse(
         status_code=exc.status_code,
         content=ErrorResponse(
@@ -158,13 +240,26 @@ async def starlette_http_exception_handler(request: Request, exc: StarletteHTTPE
                 timestamp=now_iso
             )
         ).model_dump(),
-        headers={"X-Request-ID": request_id}
+        headers=headers
     )
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
     now_iso = datetime.now(timezone.utc).isoformat()
+    if _is_request_size_exceeded(exc):
+        return JSONResponse(
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+            content=ErrorResponse(
+                error=ErrorDetail(
+                    code="REQUEST_TOO_LARGE",
+                    message=f"Request exceeds the {MAX_REQUEST_BYTES // (1024 * 1024)} MB local-service limit. Reduce the captured page or chunk set and retry.",
+                    requestId=request_id,
+                    timestamp=now_iso,
+                )
+            ).model_dump(),
+            headers={"X-Request-ID": request_id, "X-Content-Type-Options": "nosniff", "Cache-Control": "no-store"}
+        )
     _event_log(
         timestamp=now_iso,
         event="unhandled_exception",
@@ -202,21 +297,27 @@ async def get_health(request: Request):
 async def get_version():
     return VersionResponse()
 
-# Day 5 Embeddings & Vector Search Endpoints
-@app.get("/model/status", response_model=ModelStatusResponse)
+# Embeddings & Vector Search Endpoints
+@app.get("/model/status", response_model=ModelStatusResponse, dependencies=[Depends(verify_bearer_token)])
 async def get_model_status():
     engine = EmbeddingEngine.get_instance()
     return engine.get_status()
 
-@app.post("/embed", response_model=EmbedResponse)
+@app.post("/embed", response_model=EmbedResponse, dependencies=[Depends(verify_bearer_token)])
 async def embed_content(payload: EmbedRequest):
     start = time.perf_counter()
     engine = EmbeddingEngine.get_instance()
     
     if payload.chunks:
-        matrix, cached_count, computed_count = engine.embed_chunks(payload.chunks)
+        async with _inference_semaphore:
+            matrix, cached_count, computed_count = await asyncio.to_thread(
+                engine.embed_chunks, payload.chunks
+            )
     elif payload.texts:
-        matrix, cached_count, computed_count = engine.embed_texts(payload.texts)
+        async with _inference_semaphore:
+            matrix, cached_count, computed_count = await asyncio.to_thread(
+                engine.embed_texts, payload.texts
+            )
     else:
         raise HTTPException(status_code=400, detail="Either 'texts' or 'chunks' must be provided in request body.")
 
@@ -230,7 +331,7 @@ async def embed_content(payload: EmbedRequest):
         computedCount=computed_count
     )
 
-@app.post("/search", response_model=SearchResponse)
+@app.post("/search", response_model=SearchResponse, dependencies=[Depends(verify_bearer_token)])
 async def search_chunks(payload: SearchRequest):
     if not payload.query or not payload.query.strip():
         raise HTTPException(status_code=400, detail="Query cannot be empty.")
@@ -240,44 +341,60 @@ async def search_chunks(payload: SearchRequest):
 
     engine = EmbeddingEngine.get_instance()
     try:
-        response = engine.search(
-            query=payload.query,
-            chunks=payload.chunks,
-            top_k=payload.topK,
-            strategy=payload.strategy
-        )
+        async with _inference_semaphore:
+            response = await asyncio.to_thread(
+                engine.search,
+                query=payload.query,
+                chunks=payload.chunks,
+                top_k=payload.topK,
+                strategy=payload.strategy,
+                search_mode=payload.searchMode or "hybrid",
+                min_score=payload.minScore
+            )
         return response
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
+    except RuntimeError as re:
+        raise HTTPException(status_code=503, detail=str(re))
     except Exception:
         raise HTTPException(status_code=500, detail="Search failed unexpectedly. Retry using a smaller chunk set.")
 
-# Day 6 Retrieval Debugger & Question Generator Endpoints
-@app.post("/retrieval/query", response_model=RetrievalQueryResponse)
+# Retrieval Debugger & Question Generator Endpoints
+@app.post("/retrieval/query", response_model=RetrievalQueryResponse, dependencies=[Depends(verify_bearer_token)])
 async def retrieve_chunks(req: RetrievalQueryRequest):
-    results, duration_ms = run_retrieval(
-        query=req.query,
-        chunks=req.chunks,
-        strategy=req.strategy,
-        top_k=req.topK
-    )
-    return RetrievalQueryResponse(
-        results=results,
-        executionTimeMs=duration_ms
-    )
+    try:
+        async with _inference_semaphore:
+            results, duration_ms, degraded, fallback_reason = await asyncio.to_thread(
+                run_retrieval,
+                query=req.query,
+                chunks=req.chunks,
+                strategy=req.strategy,
+                top_k=req.topK,
+                search_mode=req.searchMode or "hybrid",
+                min_score=req.minScore
+            )
+        return RetrievalQueryResponse(
+            results=results,
+            executionTimeMs=duration_ms,
+            searchMode="bm25" if degraded else (req.searchMode or "hybrid"),
+            degraded=degraded,
+            fallbackReason=fallback_reason
+        )
+    except RuntimeError as re:
+        raise HTTPException(status_code=503, detail=str(re))
 
-@app.post("/evaluation/draft-questions", response_model=DraftQuestionsResponse)
+@app.post("/evaluation/draft-questions", response_model=DraftQuestionsResponse, dependencies=[Depends(verify_bearer_token)])
 async def draft_questions(req: DraftQuestionsRequest):
     drafts = generate_draft_questions_from_blocks(req.blocks)
     return DraftQuestionsResponse(questions=drafts)
 
-# Day 7 Grounded LLM Answers Endpoints
-@app.get("/llm/status", response_model=LLMProviderStatusResponse)
+# Grounded LLM Answers Endpoints
+@app.get("/llm/status", response_model=LLMProviderStatusResponse, dependencies=[Depends(verify_bearer_token)])
 async def get_llm_status():
     provider = get_llm_provider()
     return await provider.get_status()
 
-@app.post("/llm/answer", response_model=GroundedAnswerResponse)
+@app.post("/llm/answer", response_model=GroundedAnswerResponse, dependencies=[Depends(verify_bearer_token)])
 async def generate_grounded_answer(req: GroundedAnswerRequest):
     if not req.query or not req.query.strip():
         raise HTTPException(status_code=400, detail="Question/query cannot be empty.")
@@ -300,7 +417,7 @@ async def generate_grounded_answer(req: GroundedAnswerRequest):
     except Exception:
         raise HTTPException(status_code=500, detail="Answer generation failed unexpectedly. Retrieved evidence is still available.")
 
-@app.post("/llm/answer/stream")
+@app.post("/llm/answer/stream", dependencies=[Depends(verify_bearer_token)])
 async def stream_grounded_answer(req: GroundedAnswerRequest):
     if not req.query or not req.query.strip():
         raise HTTPException(status_code=400, detail="Question/query cannot be empty.")
@@ -335,8 +452,8 @@ async def stream_grounded_answer(req: GroundedAnswerRequest):
         }
     )
 
-# Day 8 Portable RAG Package Endpoints
-@app.post("/export/package")
+# Portable RAG Package Endpoints
+@app.post("/export/package", dependencies=[Depends(verify_bearer_token)])
 async def export_rag_package(req: ExportPackageRequest):
     if not req.captureResult or not req.captureResult.blocks:
         raise HTTPException(status_code=400, detail="Cannot export package with empty capture blocks.")
@@ -373,7 +490,7 @@ async def export_rag_package(req: ExportPackageRequest):
         raise HTTPException(status_code=500, detail="Package export failed unexpectedly. Your capture remains available; retry with fewer records.")
 
 
-@app.post("/package/validate", response_model=PackageValidationReport)
+@app.post("/package/validate", response_model=PackageValidationReport, dependencies=[Depends(verify_bearer_token)])
 async def validate_rag_package(request: Request):
     content = await request.body()
     if not content:
