@@ -2,9 +2,10 @@ import React from 'react';
 
 interface EmptyStateProps {
   onStartCapture: (mode: 'page' | 'selection' | 'element') => void;
+  onLoadDemo?: () => void;
 }
 
-export const EmptyState: React.FC<EmptyStateProps> = ({ onStartCapture }) => {
+export const EmptyState: React.FC<EmptyStateProps> = ({ onStartCapture, onLoadDemo }) => {
   return (
     <div className="status-view empty-view">
       <div className="status-icon">🌐</div>
@@ -20,6 +21,11 @@ export const EmptyState: React.FC<EmptyStateProps> = ({ onStartCapture }) => {
         <button className="btn btn-secondary" onClick={() => onStartCapture('element')}>
           🎯 Element Picker
         </button>
+        {onLoadDemo && (
+          <button className="btn btn-demo" onClick={onLoadDemo} title="Load sample documentation fixture to preview all features">
+            ⚡ Load Sample Docs
+          </button>
+        )}
       </div>
     </div>
   );

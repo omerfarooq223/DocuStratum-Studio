@@ -22,6 +22,7 @@ import { RetrievalView } from './components/RetrievalView';
 import { RetrievalDebugger } from './components/RetrievalDebugger';
 import { ExportPackagePanel } from './components/ExportPackagePanel';
 import { EmptyState, RestrictedPageState, ErrorState } from './components/StatusViews';
+import { DEMO_CAPTURE } from './utils/demoData';
 
 const SERVICE_URL = 'http://127.0.0.1:8000';
 const EMPTY_BLOCKS: Block[] = [];
@@ -265,6 +266,15 @@ export const App: React.FC = () => {
     return map;
   }, [currentBlocks]);
 
+  const handleLoadDemo = () => {
+    setCaptureResult(DEMO_CAPTURE);
+    setOriginalBlocks(DEMO_CAPTURE.blocks.map((b: Block) => ({ ...b })));
+    setCaptureStatus('success');
+    setHighlightedBlockIds(new Set());
+    setActiveMode(null);
+    void saveDraftCapture(DEMO_CAPTURE);
+  };
+
   return (
     <div className="container">
       {/* Extension Header */}
@@ -407,7 +417,7 @@ export const App: React.FC = () => {
 
       {/* Empty State when no capture is active */}
       {captureStatus === 'idle' && !captureResult && (
-        <EmptyState onStartCapture={handleStartCapture} />
+        <EmptyState onStartCapture={handleStartCapture} onLoadDemo={handleLoadDemo} />
       )}
     </div>
   );
