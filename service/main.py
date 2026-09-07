@@ -65,7 +65,7 @@ def _event_log(**fields: object) -> None:
 
 
 app = FastAPI(
-    title="WebRAG Studio Local Service",
+    title="DocuStratum Studio Local Service",
     description="Local service for DOM chunking, embedding, vector search, RAG evaluation, and package export.",
     version="0.1.0"
 )
@@ -88,7 +88,7 @@ def _is_request_size_exceeded(exc: BaseException) -> bool:
 
 
 # Local development origins are explicit. Chrome extension origins can be restricted
-# via WEBRAG_ALLOWED_EXTENSION_IDS or match the standard MV3 extension-ID shape.
+# via DOCUSTRATUM_ALLOWED_EXTENSION_IDS or match the standard MV3 extension-ID shape.
 _allowed_ids = get_allowed_extension_ids()
 if _allowed_ids:
     _ids_pattern = "|".join([re.escape(eid) for eid in _allowed_ids])
@@ -102,7 +102,7 @@ app.add_middleware(
     allow_origin_regex=_origin_regex,
     allow_credentials=False,
     allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Content-Type", "X-Request-ID", "Authorization", "X-WebRAG-Token"],
+    allow_headers=["Content-Type", "X-Request-ID", "Authorization", "X-DocuStratum-Token", "X-WebRAG-Token"],
 )
 
 @app.middleware("http")
@@ -280,6 +280,17 @@ async def global_exception_handler(request: Request, exc: Exception):
         ).model_dump(),
         headers={"X-Request-ID": request_id}
     )
+
+@app.get("/", response_class=Response)
+@app.get("/demo", response_class=Response)
+async def serve_demo_fixture():
+    fixture_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "fixtures", "demo-fixture.html")
+    if os.path.exists(fixture_path):
+        with open(fixture_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        return Response(content=content, media_type="text/html")
+    return Response(content="<h1>DocuStratum Service Running</h1><p>API documentation at <a href='/docs'>/docs</a>.</p>", media_type="text/html")
+
 
 @app.get("/health", response_model=HealthResponse)
 async def get_health(request: Request):
@@ -472,7 +483,7 @@ async def export_rag_package(req: ExportPackageRequest):
 
         url_slug = req.captureResult.capture.title.lower().replace(" ", "-")[:30]
         timestamp_slug = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-        filename = f"webrag-package-{url_slug}-{timestamp_slug}.zip"
+        filename = f"docustratum-package-{url_slug}-{timestamp_slug}.zip"
 
         return Response(
             content=zip_bytes,
@@ -501,4 +512,4 @@ async def validate_rag_package(request: Request):
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=f"Failed to validate package ZIP: {str(exc)}")
     except Exception:
-        raise HTTPException(status_code=400, detail="Failed to validate package ZIP. Confirm the file is a valid WebRAG package.")
+        raise HTTPException(status_code=400, detail="Failed to validate package ZIP. Confirm the file is a valid DocuStratum package.")

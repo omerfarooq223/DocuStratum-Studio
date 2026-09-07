@@ -35,7 +35,7 @@ export async function exportRAGPackage(
   }
 
   const contentDisposition = response.headers.get('Content-Disposition');
-  let filename = 'webrag-portable-package.zip';
+  let filename = 'docustratum-portable-package.zip';
   if (contentDisposition) {
     const match = contentDisposition.match(/filename="?([^"]+)"?/);
     if (match && match[1]) {

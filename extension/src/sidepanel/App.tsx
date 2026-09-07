@@ -22,6 +22,8 @@ import { RetrievalView } from './components/RetrievalView';
 import { RetrievalDebugger } from './components/RetrievalDebugger';
 import { ExportPackagePanel } from './components/ExportPackagePanel';
 import { EmptyState, RestrictedPageState, ErrorState } from './components/StatusViews';
+import { Footer } from './components/Footer';
+import { LegalComplianceModal, LegalPolicyTab } from './components/LegalComplianceModal';
 import { DEMO_CAPTURE } from './utils/demoData';
 
 const SERVICE_URL = 'http://127.0.0.1:8000';
@@ -33,6 +35,15 @@ export const App: React.FC = () => {
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [version, setVersion] = useState<VersionResponse | null>(null);
   const [healthState, setHealthState] = useState<'checking' | 'healthy' | 'offline'>('checking');
+
+  // Legal modal state
+  const [isLegalModalOpen, setIsLegalModalOpen] = useState<boolean>(false);
+  const [legalActiveTab, setLegalActiveTab] = useState<LegalPolicyTab>('privacy');
+
+  const handleOpenLegal = (tab: LegalPolicyTab) => {
+    setLegalActiveTab(tab);
+    setIsLegalModalOpen(true);
+  };
 
   // Capture & Block review state
   const [captureResult, setCaptureResult] = useState<CaptureResult | null>(null);
@@ -275,150 +286,238 @@ export const App: React.FC = () => {
     void saveDraftCapture(DEMO_CAPTURE);
   };
 
+  const [isFullTab, setIsFullTab] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get('mode') === 'tab' || window.innerWidth > 768;
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      setIsFullTab(urlParams.get('mode') === 'tab' || window.innerWidth > 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const handleOpenFullTab = () => {
+    if (typeof chrome !== 'undefined' && chrome.tabs?.create && chrome.runtime?.getURL) {
+      void chrome.tabs.create({
+        url: chrome.runtime.getURL('src/sidepanel/index.html?mode=tab'),
+      });
+    } else {
+      window.open(window.location.pathname + '?mode=tab', '_blank');
+    }
+  };
+
   return (
     <div className="container">
+      {/* Skip to Main Content Link for Keyboard Accessibility */}
+      <a href="#main-content" className="skip-link">
+        Skip to main content
+      </a>
+
       {/* Extension Header */}
-      <header className="header">
+      <header className="header" role="banner">
         <div className="logo-group">
-          <div className="logo-icon">W</div>
-          <h1 className="title">WebRAG Studio</h1>
+          <div className="logo-icon" aria-hidden="true">D</div>
+          <h1 className="title">DocuStratum Studio</h1>
         </div>
-        <button
-          type="button"
-          className={`status-badge status-${healthState}`}
-          onClick={checkHealth}
-          title={
-            health && version
-              ? `Backend v${health.version} (API v${version.apiVersion}, Schema v${health.schemaVersion})`
-              : 'Click to refresh service status'
-          }
-        >
-          <span className="status-dot"></span>
-          <span>{healthState.toUpperCase()}</span>
-        </button>
+        <div className="header-actions">
+          {!isFullTab && (
+            <button
+              type="button"
+              className="btn-tab-mode"
+              onClick={handleOpenFullTab}
+              title="Open DocuStratum Studio in a separate browser tab for widescreen analysis"
+            >
+              ↗ Full Tab
+            </button>
+          )}
+          {isFullTab && (
+            <span className="badge-tab-mode" title="DocuStratum Studio is running in Full Tab Dashboard mode">
+              Full Tab Mode
+            </span>
+          )}
+          <button
+            type="button"
+            className={`status-badge status-${healthState}`}
+            onClick={checkHealth}
+            title={
+              health && version
+                ? `Backend v${health.version} (API v${version.apiVersion}, Schema v${health.schemaVersion})`
+                : 'Click to refresh service status'
+            }
+            aria-label={`Companion service status: ${healthState}`}
+          >
+            <span className="status-dot"></span>
+            <span>{healthState.toUpperCase()}</span>
+          </button>
+        </div>
       </header>
 
-      {/* Capture Mode Triggers */}
-      <CaptureControls
-        onCapture={handleStartCapture}
-        isCapturing={captureStatus === 'capturing'}
-        activeMode={activeMode}
-        hasCapture={Boolean(captureResult)}
-        onClear={handleClearDraft}
-      />
-
-      {/* Conditional Status Views (Restricted Page or Failure Error) */}
-      {captureStatus === 'restricted' && restrictedUrl && (
-        <RestrictedPageState url={restrictedUrl} />
-      )}
-
-      {captureStatus === 'error' && errorDetails && (
-        <ErrorState
-          message={errorDetails}
-          onRetry={() => failedMode && handleStartCapture(failedMode)}
+      {/* Main Semantic Landmark */}
+      <main id="main-content" tabIndex={-1} style={{ outline: 'none', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {/* Capture Mode Triggers */}
+        <CaptureControls
+          onCapture={handleStartCapture}
+          isCapturing={captureStatus === 'capturing'}
+          activeMode={activeMode}
+          hasCapture={Boolean(captureResult)}
           onClear={handleClearDraft}
         />
-      )}
 
-      {/* Main Review & Cleaned Markdown View */}
-      {captureStatus === 'success' && captureResult && (
-        <>
-          <ExtractionSummary
-            metrics={metrics}
-            url={captureResult.capture.url}
-            title={captureResult.capture.title}
-            mode={captureResult.capture.mode}
-            timestamp={captureResult.capture.timestamp}
+        {/* Conditional Status Views (Restricted Page or Failure Error) */}
+        {captureStatus === 'restricted' && restrictedUrl && (
+          <RestrictedPageState url={restrictedUrl} />
+        )}
+
+        {captureStatus === 'error' && errorDetails && (
+          <ErrorState
+            message={errorDetails}
+            onRetry={() => failedMode && handleStartCapture(failedMode)}
+            onClear={handleClearDraft}
           />
+        )}
 
-          <nav className="tabs-header">
-            <button
-              className={`tab-btn ${activeTab === 'blocks' ? 'active' : ''}`}
-              onClick={() => setActiveTab('blocks')}
-            >
-              Blocks ({metrics.includedBlocks}/{metrics.totalBlocks})
-            </button>
-            <button
-              className={`tab-btn ${activeTab === 'markdown' ? 'active' : ''}`}
-              onClick={() => setActiveTab('markdown')}
-            >
-              Cleaned Markdown Preview
-            </button>
-            <button
-              className={`tab-btn ${activeTab === 'chunks' ? 'active' : ''}`}
-              onClick={() => setActiveTab('chunks')}
-            >
-              Compare Chunks
-            </button>
-            <button
-              className={`tab-btn ${activeTab === 'retrieve' ? 'active' : ''}`}
-              onClick={() => setActiveTab('retrieve')}
-            >
-              Semantic Search ({allChunks.length})
-            </button>
-            <button
-              className={`tab-btn ${activeTab === 'debugger' ? 'active' : ''}`}
-              onClick={() => setActiveTab('debugger')}
-            >
-              🎯 Debugger
-            </button>
-            <button
-              className={`tab-btn ${activeTab === 'export' ? 'active' : ''}`}
-              onClick={() => setActiveTab('export')}
-            >
-              📦 Export
-            </button>
-          </nav>
+        {/* Main Review & Cleaned Markdown View */}
+        {captureStatus === 'success' && captureResult && (
+          <>
+            <ExtractionSummary
+              metrics={metrics}
+              url={captureResult.capture.url}
+              title={captureResult.capture.title}
+              mode={captureResult.capture.mode}
+              timestamp={captureResult.capture.timestamp}
+              onOpenFullTab={isFullTab ? undefined : handleOpenFullTab}
+            />
 
-          {activeTab === 'blocks' ? (
-            <BlockTree
-              blocks={currentBlocks}
-              onToggleBlock={handleToggleBlock}
-              onIncludeAll={handleIncludeAll}
-              onExcludeAll={handleExcludeAll}
-              onRestoreOriginal={handleRestoreOriginal}
-              highlightedBlockIds={highlightedBlockIds}
-              onClearHighlight={() => setHighlightedBlockIds(new Set())}
-            />
-          ) : activeTab === 'markdown' ? (
-            <CleanedMarkdownPreview
-              markdown={cleanedMarkdown}
-              includedCount={metrics.includedBlocks}
-              totalCount={metrics.totalBlocks}
-            />
-          ) : activeTab === 'chunks' ? (
-            <ChunkComparison
-              blocks={currentBlocks}
-              sourceNamespace={captureResult.capture.id}
-              onHighlightBlocks={handleHighlightBlocks}
-            />
-          ) : activeTab === 'retrieve' ? (
-            <RetrievalView
-              chunks={allChunks}
-              blocksMap={blocksMap}
-              headingPaths={headingPaths}
-              onInspectBlock={(blockId) => handleHighlightBlocks([blockId])}
-              onInspectChunk={() => setActiveTab('chunks')}
-            />
-          ) : activeTab === 'debugger' ? (
-            <RetrievalDebugger
-              captureResult={captureResult}
-              recursiveChunks={recursiveChunks}
-              headingChunks={headingChunks}
-            />
-          ) : (
-            <ExportPackagePanel
-              captureResult={captureResult}
-              chunks={allChunks}
-            />
-          )}
-        </>
-      )}
+            <nav className="tabs-header" aria-label="Analysis Tabs">
+              <button
+                type="button"
+                id="tab-blocks"
+                aria-pressed={activeTab === 'blocks'}
+                className={`tab-btn ${activeTab === 'blocks' ? 'active' : ''}`}
+                onClick={() => setActiveTab('blocks')}
+              >
+                Blocks ({metrics.includedBlocks}/{metrics.totalBlocks})
+              </button>
+              <button
+                type="button"
+                id="tab-markdown"
+                aria-pressed={activeTab === 'markdown'}
+                className={`tab-btn ${activeTab === 'markdown' ? 'active' : ''}`}
+                onClick={() => setActiveTab('markdown')}
+              >
+                Cleaned Markdown Preview
+              </button>
+              <button
+                type="button"
+                id="tab-chunks"
+                aria-pressed={activeTab === 'chunks'}
+                className={`tab-btn ${activeTab === 'chunks' ? 'active' : ''}`}
+                onClick={() => setActiveTab('chunks')}
+              >
+                Compare Chunks
+              </button>
+              <button
+                type="button"
+                id="tab-retrieve"
+                aria-pressed={activeTab === 'retrieve'}
+                className={`tab-btn ${activeTab === 'retrieve' ? 'active' : ''}`}
+                onClick={() => setActiveTab('retrieve')}
+              >
+                Semantic Search ({allChunks.length})
+              </button>
+              <button
+                type="button"
+                id="tab-debugger"
+                aria-pressed={activeTab === 'debugger'}
+                className={`tab-btn ${activeTab === 'debugger' ? 'active' : ''}`}
+                onClick={() => setActiveTab('debugger')}
+              >
+                Retrieval Debugger
+              </button>
+              <button
+                type="button"
+                id="tab-export"
+                aria-pressed={activeTab === 'export'}
+                className={`tab-btn ${activeTab === 'export' ? 'active' : ''}`}
+                onClick={() => setActiveTab('export')}
+              >
+                Export Package
+              </button>
+            </nav>
 
-      {/* Empty State when no capture is active */}
-      {captureStatus === 'idle' && !captureResult && (
-        <EmptyState onStartCapture={handleStartCapture} onLoadDemo={handleLoadDemo} />
-      )}
+            <div
+              id={`tabpanel-${activeTab}`}
+              role="tabpanel"
+              aria-labelledby={`tab-${activeTab}`}
+              className="tab-content-container"
+            >
+              {activeTab === 'blocks' ? (
+                <BlockTree
+                  blocks={currentBlocks}
+                  onToggleBlock={handleToggleBlock}
+                  onIncludeAll={handleIncludeAll}
+                  onExcludeAll={handleExcludeAll}
+                  onRestoreOriginal={handleRestoreOriginal}
+                  highlightedBlockIds={highlightedBlockIds}
+                  onClearHighlight={() => setHighlightedBlockIds(new Set())}
+                />
+              ) : activeTab === 'markdown' ? (
+                <CleanedMarkdownPreview
+                  markdown={cleanedMarkdown}
+                  includedCount={metrics.includedBlocks}
+                  totalCount={metrics.totalBlocks}
+                />
+              ) : activeTab === 'chunks' ? (
+                <ChunkComparison
+                  blocks={currentBlocks}
+                  sourceNamespace={captureResult.capture.id}
+                  onHighlightBlocks={handleHighlightBlocks}
+                />
+              ) : activeTab === 'retrieve' ? (
+                <RetrievalView
+                  chunks={allChunks}
+                  blocksMap={blocksMap}
+                  headingPaths={headingPaths}
+                  onInspectBlock={(blockId) => handleHighlightBlocks([blockId])}
+                  onInspectChunk={() => setActiveTab('chunks')}
+                />
+              ) : activeTab === 'debugger' ? (
+                <RetrievalDebugger
+                  captureResult={captureResult}
+                  recursiveChunks={recursiveChunks}
+                  headingChunks={headingChunks}
+                />
+              ) : (
+                <ExportPackagePanel
+                  captureResult={captureResult}
+                  chunks={allChunks}
+                />
+              )}
+            </div>
+          </>
+        )}
+
+        {/* Empty State when no capture is active */}
+        {captureStatus === 'idle' && !captureResult && (
+          <EmptyState onStartCapture={handleStartCapture} onLoadDemo={handleLoadDemo} />
+        )}
+      </main>
+
+      {/* Semantic Footer with Legal Navigation */}
+      <Footer onOpenLegal={handleOpenLegal} />
+
+      {/* Accessible Legal & Compliance Modal */}
+      <LegalComplianceModal
+        isOpen={isLegalModalOpen}
+        activeTab={legalActiveTab}
+        onTabChange={setLegalActiveTab}
+        onClose={() => setIsLegalModalOpen(false)}
+      />
     </div>
   );
 };

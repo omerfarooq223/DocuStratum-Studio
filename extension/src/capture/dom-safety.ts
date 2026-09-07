@@ -74,8 +74,7 @@ export function isHidden(element: Element): boolean {
     return (
       style.display === 'none' ||
       style.visibility === 'hidden' ||
-      style.visibility === 'collapse' ||
-      style.opacity === '0'
+      style.visibility === 'collapse'
     );
   } catch {
     return false;

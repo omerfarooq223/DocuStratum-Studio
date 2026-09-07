@@ -17,7 +17,7 @@ from service.packager.loader import RAGPackage
 
 def run_chroma_import_example(package_path_or_bytes):
     print("=" * 70)
-    print(" WebRAG Portable Package: ChromaDB Vector Store Import Example")
+    print(" DocuStratum Portable Package: ChromaDB Vector Store Import Example")
     print("=" * 70)
 
     try:

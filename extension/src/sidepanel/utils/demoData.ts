@@ -30,13 +30,13 @@ export const DEMO_CAPTURE: CaptureResult = {
     {
       id: 'blk_2',
       type: 'paragraph',
-      content: 'Welcome to the WebRAG Studio authentication docs. This reference explains how to issue, refresh, and revoke bearer tokens for API requests.',
+      content: 'Welcome to the DocuStratum Studio authentication docs. This reference explains how to issue, refresh, and revoke bearer tokens for API requests.',
       headingPath: ['Authentication API Reference'],
       sourceAnchor: {
         blockId: 'blk_2',
         headingPath: ['Authentication API Reference'],
         cssSelector: 'main > p:nth-of-type(1)',
-        textQuote: { exact: 'Welcome to the WebRAG Studio authentication docs.' },
+        textQuote: { exact: 'Welcome to the DocuStratum Studio authentication docs.' },
       },
       contentHash: 'hash_blk_2',
       included: true,

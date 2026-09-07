@@ -1,14 +1,13 @@
-# WebRAG Studio
+# DocuStratum Studio
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-0.1.0--rc1-blue.svg)](RELEASE_NOTES.md)
+[![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](README.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Chrome MV3](https://img.shields.io/badge/Chrome-Manifest%20V3-orange.svg)](#step-2-build-and-load-the-chrome-extension)
 [![FastAPI](https://img.shields.io/badge/Backend-FastAPI%20%7C%20Python%203.10+-009688.svg)](#step-1-set-up-and-start-the-companion-service)
 [![TypeScript](https://img.shields.io/badge/Frontend-TypeScript%20%7C%20React%2018-3178C6.svg)](#step-2-build-and-load-the-chrome-extension)
 [![Local First](https://img.shields.io/badge/Privacy-100%25%20Local--First-darkgreen.svg)](#security--privacy-policy)
-[![Tests Passing](https://img.shields.io/badge/Tests-115%20Passed%20%7C%200%20Failed-success.svg)](#running-tests--quality-checks)
 
 **Deterministic Web Content Extraction • Structural Provenance • Parallel Dual-Chunking • 100% Local Vector Retrieval • Grounded LLM Answers**
 
@@ -18,9 +17,9 @@
 
 ## Overview
 
-**WebRAG Studio** is a local-first Chrome extension and companion service engineered to solve the foundational challenge of Retrieval-Augmented Generation (RAG): **unreliable, ungrounded, and leaky web ingestion**.
+**DocuStratum Studio** is a local-first Chrome extension and companion service engineered to solve the foundational challenge of Retrieval-Augmented Generation (RAG): **unreliable, ungrounded, and leaky web ingestion**.
 
-Traditional web scrapers flatten DOM hierarchy, discard structural context, ingest sensitive authentication fields, and produce brittle vector matches with unprovable citations. WebRAG Studio replaces heuristic scraping with a deterministic pipeline:
+Traditional web scrapers flatten DOM hierarchy, discard structural context, ingest sensitive authentication fields, and produce brittle vector matches with unprovable citations. DocuStratum Studio replaces heuristic scraping with a deterministic pipeline:
 
 1. **Safe DOM Traversal**: Converts live webpages into structured semantic blocks (`heading`, `paragraph`, `list`, `code`, `table`, `callout`) while strictly omitting scripts, styles, forms, and hidden secrets.
 2. **Traceable Provenance**: Every block and chunk retains its source URL, capture timestamp, CSS selector, DOM node path, and cryptographic SHA-256 hash.
@@ -44,7 +43,7 @@ Traditional web scrapers flatten DOM hierarchy, discard structural context, inge
 │  └─────────────────────────────────┘   └─────────────────┬───────────────┘  │
 │                                                          │                  │
 │  ┌───────────────────────────────────────────────────────▼───────────────┐  │
-│  │                 WebRAG Studio Side Panel (React 18 + Vite)            │  │
+│  │               DocuStratum Studio Side Panel (React 18 + Vite)         │  │
 │  │  • Block Review & Inclusion Toggles  • Cleaned Markdown Preview       │  │
 │  │  • Parallel Chunker Visualizer       • Retrieval Debugger (Hit@K, MRR)│  │
 │  │  • Grounded Answer Streaming Panel   • Portable Package Exporter      │  │
@@ -73,7 +72,7 @@ Traditional web scrapers flatten DOM hierarchy, discard structural context, inge
 
 ## Core Capabilities
 
-| Capability | WebRAG Studio Implementation | Traditional Web Scrapers / RAG |
+| Capability | DocuStratum Studio Implementation | Traditional Web Scrapers / RAG |
 | :--- | :--- | :--- |
 | **Extraction Model** | Deterministic semantic block normalizer preserving tables, code, and heading hierarchy | Lossy regex or markdown conversion that flattens headings and destroys table schemas |
 | **Privacy & Sanitization** | Automatic boundary exclusion for password inputs, tokens, forms, scripts, and hidden tags | Often dumps raw HTML forms, auth inputs, and session tokens into embeddings |
@@ -88,7 +87,7 @@ Traditional web scrapers flatten DOM hierarchy, discard structural context, inge
 ## Project Monorepo Structure
 
 ```text
-WebRAG/
+DocuStratum/
 ├── extension/                         # Chrome Manifest V3 Extension
 │   ├── src/
 │   │   ├── background/                # MV3 background worker & message router
@@ -190,8 +189,8 @@ WebRAG/
 3. Load into Google Chrome:
    * Navigate to `chrome://extensions`.
    * Enable **Developer mode** (toggle in the top-right corner).
-   * Click **Load unpacked** and select the `WebRAG/extension/dist` directory.
-   * Pin **WebRAG Studio** to your Chrome toolbar.
+   * Click **Load unpacked** and select the `DocuStratum/extension/dist` directory.
+   * Pin **DocuStratum Studio** to your Chrome toolbar.
    * Click the extension icon to open the Side Panel.
 
 ---
@@ -200,16 +199,16 @@ WebRAG/
 
 1. Open the included demo documentation page in Chrome:
    ```text
-   file:///path/to/WebRAG/fixtures/demo-fixture.html
+   file:///path/to/DocuStratum/fixtures/demo-fixture.html
    ```
-2. Click the **WebRAG Studio** side panel icon.
+2. Click the **DocuStratum Studio** side panel icon.
 3. Click **Capture Page** or **Capture Element** to extract semantic blocks and start querying!
 
 ---
 
 ## Running Tests & Quality Checks
 
-WebRAG Studio enforces a zero-defect policy with comprehensive test suites spanning both Python and TypeScript:
+DocuStratum Studio enforces a zero-defect policy with comprehensive test suites spanning both Python and TypeScript:
 
 ### Unified Quality Gate (One Command)
 Run all backend tests, frontend tests, and the production extension build:
@@ -266,7 +265,7 @@ The FastAPI service exposes high-performance local endpoints restricted to loopb
 Exported RAG packages are standard, self-contained ZIP archives containing structured human-readable and machine-parseable artifacts:
 
 ```text
-webrag-package.zip
+docustratum-package.zip
 ├── manifest.json              # SHA-256 hashes, source identity & model metadata
 ├── README.md                  # Documentation and quickstart code snippets
 ├── source/
@@ -285,7 +284,7 @@ webrag-package.zip
 from service.packager.loader import RAGPackage
 
 # Open and validate archive in memory
-pkg = RAGPackage.open("webrag-sample.zip")
+pkg = RAGPackage.open("docustratum-sample.zip")
 print(f"Valid: {pkg.validate().valid}")
 print(f"Source URL: {pkg.manifest.sourceIdentity.url}")
 
@@ -298,7 +297,7 @@ for chunk in pkg.chunks:
 
 Validate package archives via CLI:
 ```bash
-python3 scripts/validate-package.py path/to/webrag-package.zip
+python3 scripts/validate-package.py path/to/docustratum-package.zip
 ```
 
 ---
@@ -332,7 +331,6 @@ Local retrieval benchmarks measured on Apple Silicon (M-series, CPU device) usin
 
 For detailed engineering decision records, mathematical foundations, and component specifications, consult the runbooks in `docs/`:
 
-* [System Architecture & Production Specification](production-specification.md)
 * [Safe DOM Capture & Provenance Engine](docs/safe-dom-capture.md)
 * [Deterministic Chunking & Strategy Comparison](docs/deterministic-chunking.md)
 * [Local Embeddings & In-Memory Vector Retrieval](docs/local-embeddings-retrieval.md)
@@ -340,7 +338,6 @@ For detailed engineering decision records, mathematical foundations, and compone
 * [Grounded LLM Answers & Provider Resilience](docs/grounded-llm-answers.md)
 * [Portable RAG Package System & Python Loader](docs/portable-rag-package.md)
 * [Reliability, Security Hardening & Benchmarks](docs/reliability-security-polish.md)
-* [Release Candidate Verification Runbook](docs/release-candidate.md)
 
 ---
 

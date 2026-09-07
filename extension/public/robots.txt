@@ -1,0 +1,5 @@
+# DocuStratum Studio - Robots Configuration
+User-agent: *
+Allow: /
+
+Sitemap: https://docustratum.local/sitemap.xml

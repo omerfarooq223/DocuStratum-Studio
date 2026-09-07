@@ -12,10 +12,11 @@ AUTH_FILE = AUTH_DIR / "auth_token"
 
 def get_allowed_extension_ids() -> Set[str]:
     """
-    Returns configured allowed Chrome extension IDs from WEBRAG_ALLOWED_EXTENSION_IDS (comma-separated).
+    Returns configured allowed Chrome extension IDs from DOCUSTRATUM_ALLOWED_EXTENSION_IDS
+    or legacy WEBRAG_ALLOWED_EXTENSION_IDS (comma-separated).
     If not set or empty, returns an empty set (permissive dev mode).
     """
-    raw = os.getenv("WEBRAG_ALLOWED_EXTENSION_IDS", "").strip()
+    raw = os.getenv("DOCUSTRATUM_ALLOWED_EXTENSION_IDS") or os.getenv("WEBRAG_ALLOWED_EXTENSION_IDS", "").strip()
     if not raw or raw == "*":
         return set()
     return {eid.strip() for eid in raw.split(",") if eid.strip()}
@@ -23,16 +24,18 @@ def get_allowed_extension_ids() -> Set[str]:
 def get_or_create_auth_token() -> Optional[str]:
     """
     Returns the auth token configured via environment variable or persistent user file.
-    - If WEBRAG_AUTH_TOKEN is explicitly set to a non-empty string, uses that.
-    - If WEBRAG_AUTH_TOKEN is explicitly set to empty, auth is disabled.
-    - If WEBRAG_REQUIRE_AUTH is truthy, loads or generates ~/.webrag/auth_token.
+    - If DOCUSTRATUM_AUTH_TOKEN or WEBRAG_AUTH_TOKEN is explicitly set, uses that.
+    - If explicitly set to empty, auth is disabled.
+    - If DOCUSTRATUM_REQUIRE_AUTH or WEBRAG_REQUIRE_AUTH is truthy, loads or generates ~/.docustratum/auth_token.
     """
-    env_token = os.getenv("WEBRAG_AUTH_TOKEN")
+    env_token = os.getenv("DOCUSTRATUM_AUTH_TOKEN")
+    if env_token is None:
+        env_token = os.getenv("WEBRAG_AUTH_TOKEN")
     if env_token is not None:
         token = env_token.strip()
         return token if token else None
 
-    require_auth = os.getenv("WEBRAG_REQUIRE_AUTH", "").lower() in ("1", "true", "yes")
+    require_auth = (os.getenv("DOCUSTRATUM_REQUIRE_AUTH") or os.getenv("WEBRAG_REQUIRE_AUTH", "")).lower() in ("1", "true", "yes")
     if not require_auth:
         return None
 
@@ -48,7 +51,7 @@ def get_or_create_auth_token() -> Optional[str]:
             os.chmod(AUTH_FILE, 0o600)
         except OSError:
             pass
-        logger.info("Generated new WebRAG companion session auth token at %s", AUTH_FILE)
+        logger.info("Generated new DocuStratum companion session auth token at %s", AUTH_FILE)
         return token
     except Exception as e:
         logger.warning("Could not read/create session token file at %s: %s", AUTH_FILE, e)
@@ -67,6 +70,8 @@ def verify_bearer_token(request: Request) -> None:
     auth_header = request.headers.get("Authorization")
     if auth_header and auth_header.startswith("Bearer "):
         token = auth_header[7:].strip()
+    elif request.headers.get("X-DocuStratum-Token"):
+        token = request.headers.get("X-DocuStratum-Token", "").strip()
     elif request.headers.get("X-WebRAG-Token"):
         token = request.headers.get("X-WebRAG-Token", "").strip()
 

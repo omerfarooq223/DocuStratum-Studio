@@ -19,7 +19,7 @@ from service.models import ChunkModel, ChunkSourceSpan
 
 def run_similarity_search_example(package_path_or_bytes):
     print("=" * 70)
-    print(" WebRAG Portable Package: Downstream Similarity Search Example")
+    print(" DocuStratum Portable Package: Downstream Similarity Search Example")
     print("=" * 70)
 
     # 1. Open the portable package with zero external dependencies

@@ -246,7 +246,7 @@ def test_round_trip_export_and_loader_consumption(sample_capture_data):
         cleaned_md = pkg.get_cleaned_markdown()
         assert "API Authentication" in cleaned_md
         readme = pkg.get_readme()
-        assert "WebRAG Portable Package" in readme
+        assert "DocuStratum Portable Package" in readme
 
         # Test block iteration & indexing
         blocks = list(pkg.iter_blocks())

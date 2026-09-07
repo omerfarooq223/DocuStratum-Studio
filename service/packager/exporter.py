@@ -59,7 +59,7 @@ def generate_package_readme(
     """Generates the README.md explaining package contents and consumption."""
     src = manifest_preview.get("sourceIdentity", {})
     emb = manifest_preview.get("embeddingMetadata", {})
-    return f"""# WebRAG Portable Package
+    return f"""# DocuStratum Portable Package
 
 - **Source URL:** {src.get('url', 'N/A')}
 - **Page Title:** {src.get('title', 'N/A')}

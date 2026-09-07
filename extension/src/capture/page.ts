@@ -40,18 +40,40 @@ function bestCandidate(candidates: Element[]): Element | undefined {
 }
 
 export function findPageCaptureRoot(document: Document): Element {
-  const main = bestCandidate(Array.from(document.querySelectorAll('main, [role="main"]')));
-  if (main) return main;
-
-  const article = bestCandidate(Array.from(document.querySelectorAll('article')));
-  if (article) return article;
-
   const body = document.body;
   if (!body) throw new Error('This page has no document body to capture.');
+
+  const bodyTextLen = safeNormalizedText(body).length;
+
+  const main = bestCandidate(Array.from(document.querySelectorAll('main, [role="main"]')));
+  if (main) {
+    const mainTextLen = safeNormalizedText(main).length;
+    if (bodyTextLen === 0 || mainTextLen >= bodyTextLen * 0.45) {
+      return main;
+    }
+  }
+
+  const article = bestCandidate(Array.from(document.querySelectorAll('article')));
+  if (article) {
+    const articleTextLen = safeNormalizedText(article).length;
+    if (bodyTextLen === 0 || articleTextLen >= bodyTextLen * 0.45) {
+      return article;
+    }
+  }
+
   const densityCandidates = [body, ...Array.from(body.querySelectorAll('article, section, div'))]
     .filter((candidate) => candidate.children.length > 0)
     .slice(0, 1_500);
-  return bestCandidate(densityCandidates) ?? body;
+  const best = bestCandidate(densityCandidates);
+  if (best && best !== body) {
+    const bestTextLen = safeNormalizedText(best).length;
+    // Only prefer a sub-container if it represents the vast majority (>= 65%) of the body's safe content
+    // Otherwise, we must return body so we don't drop other legitimate sibling sections on portfolios / multi-section pages.
+    if (bodyTextLen > 0 && bestTextLen >= bodyTextLen * 0.65) {
+      return best;
+    }
+  }
+  return body;
 }
 
 export async function capturePage(environment: CaptureEnvironment): Promise<CaptureResult> {

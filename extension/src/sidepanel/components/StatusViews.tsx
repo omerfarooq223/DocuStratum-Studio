@@ -49,7 +49,7 @@ export const RestrictedPageState: React.FC<RestrictedPageStateProps> = ({ url })
         <code>{url}</code>
       </div>
       <p className="status-hint">
-        💡 <strong>To test WebRAG Studio:</strong> Navigate to any standard documentation page or open
+        <strong>To test DocuStratum Studio:</strong> Navigate to any standard documentation page or open
         the local fixture page at <code>fixtures/demo-fixture.html</code>.
       </p>
     </div>

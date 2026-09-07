@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CLI validation tool for WebRAG portable packages.
+CLI validation tool for DocuStratum portable packages.
 Performs schema, referential integrity, and sha256 checksum verification.
 """
 from __future__ import annotations
@@ -26,7 +26,7 @@ def main() -> int:
         print(f"Error: File not found: {zip_path}", file=sys.stderr)
         return 1
 
-    print(f"[*] Validating WebRAG package: {zip_path.name} ({zip_path.stat().st_size} bytes)...")
+    print(f"[*] Validating DocuStratum package: {zip_path.name} ({zip_path.stat().st_size} bytes)...")
     with open(zip_path, "rb") as f:
         zip_bytes = f.read()
 

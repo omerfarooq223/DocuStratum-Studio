@@ -232,7 +232,7 @@ export const ExportPackagePanel: React.FC<ExportPackagePanelProps> = ({
         <pre style={{ margin: 0, fontSize: '11px', color: '#a5f3fc', overflowX: 'auto', fontFamily: 'monospace' }}>
 {`from service.packager.loader import RAGPackage
 
-with RAGPackage.open("webrag-package.zip") as pkg:
+with RAGPackage.open("docustratum-package.zip") as pkg:
     # 1. Cryptographic and referential verification
     report = pkg.validate()
     print(f"Valid: {report.valid}")

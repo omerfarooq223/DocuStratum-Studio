@@ -42,7 +42,7 @@ export async function fetchModelStatus(): Promise<ModelStatusResponse> {
       );
     }
     throw new RetrievalServiceError(
-      `Cannot connect to local WebRAG companion service at ${SERVICE_BASE_URL}. Ensure 'uvicorn service.main:app --port 8000' is running.`,
+      `Cannot connect to local DocuStratum companion service at ${SERVICE_BASE_URL}. Ensure 'uvicorn service.main:app --port 8000' is running.`,
       'SERVICE_OFFLINE'
     );
   }
@@ -119,7 +119,7 @@ export async function searchLocalChunks(
       );
     }
     throw new RetrievalServiceError(
-      `Cannot connect to local WebRAG companion service at ${SERVICE_BASE_URL}. Ensure the service is running.`,
+      `Cannot connect to local DocuStratum companion service at ${SERVICE_BASE_URL}. Ensure the service is running.`,
       'SERVICE_OFFLINE'
     );
   }

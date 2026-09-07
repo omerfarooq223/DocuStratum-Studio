@@ -7,6 +7,7 @@ interface ExtractionSummaryProps {
   title: string;
   mode: string;
   timestamp: string;
+  onOpenFullTab?: () => void;
 }
 
 export const ExtractionSummary: React.FC<ExtractionSummaryProps> = ({
@@ -15,6 +16,7 @@ export const ExtractionSummary: React.FC<ExtractionSummaryProps> = ({
   title,
   mode,
   timestamp,
+  onOpenFullTab,
 }) => {
   const formattedTime = new Date(timestamp).toLocaleTimeString([], {
     hour: '2-digit',
@@ -26,9 +28,21 @@ export const ExtractionSummary: React.FC<ExtractionSummaryProps> = ({
     <div className="extraction-summary-card">
       <div className="summary-header">
         <div className="source-info">
-          <span className="source-title" title={title}>
-            {title || 'Untitled Page'}
-          </span>
+          <div className="source-title-row">
+            <span className="source-title" title={title}>
+              {title || 'Untitled Page'}
+            </span>
+            {onOpenFullTab && (
+              <button
+                type="button"
+                className="btn-full-tab-link"
+                onClick={onOpenFullTab}
+                title="Open full page analysis in a separate browser tab"
+              >
+                ↗ Open in Full Tab
+              </button>
+            )}
+          </div>
           <span className="source-meta">
             <span className="mode-badge">{mode.toUpperCase()}</span>
             <span className="url-preview" title={url}>

@@ -190,7 +190,7 @@ class RAGPackage:
         answers = list(self.iter_answers())
 
         print("=" * 60)
-        print(" WebRAG Portable Package Summary")
+        print(" DocuStratum Portable Package Summary")
         print("=" * 60)
         print(f" Source URL:   {src.get('url', 'N/A')}")
         print(f" Page Title:   {src.get('title', 'N/A')}")

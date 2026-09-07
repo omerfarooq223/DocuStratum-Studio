@@ -2,7 +2,7 @@
 set -e
 
 echo "========================================================"
-echo "    WebRAG Studio - Release Candidate Verification"
+echo "    DocuStratum Studio - Release Candidate Verification"
 echo "========================================================"
 echo ""
 
@@ -146,7 +146,7 @@ zip_bytes, manifest = PackageExporter.build_package_zip(
     generation_metadata=GenerationMetadata(provider="groq", model="llama-3.3-70b-versatile", promptVersion="v1.0.0", temperature=0.1),
 )
 
-out_path = Path("dist/release/webrag-sample-rc1.zip")
+out_path = Path("dist/release/docustratum-sample-rc1.zip")
 out_path.parent.mkdir(parents=True, exist_ok=True)
 with open(out_path, "wb") as f:
     f.write(zip_bytes)

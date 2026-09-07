@@ -1,6 +1,6 @@
 # Security Policy & Threat Model
 
-WebRAG Studio is designed with a local-first, privacy-preserving architecture. The Chrome MV3 extension interacts with a companion FastAPI service running strictly on local loopback (`http://127.0.0.1:8000`).
+DocuStratum Studio is designed with a local-first, privacy-preserving architecture. The Chrome MV3 extension interacts with a companion FastAPI service running strictly on local loopback (`http://127.0.0.1:8000`).
 
 ---
 
@@ -10,8 +10,8 @@ WebRAG Studio is designed with a local-first, privacy-preserving architecture. T
 - **Threat**: Untrusted local processes or malicious Chrome extensions installed in the same browser could attempt to call the companion service to invoke LLM endpoints using the user's configured provider API keys or exfiltrate captured document text.
 - **Defenses**:
   - **Origin Isolation**: CORS is restricted to local loopback ports and valid Chrome extension schemes (`chrome-extension://`).
-  - **Explicit Extension Allowlisting**: Administrators and users can set `WEBRAG_ALLOWED_EXTENSION_IDS=<extension-id>` to restrict CORS exclusively to their trusted WebRAG Studio extension installation.
-  - **Bearer Token Authentication**: The service supports Bearer token authentication via `WEBRAG_AUTH_TOKEN` or a local session token file (`~/.webrag/auth_token` permissions `0600`). Sensitive operations (`/search`, `/embed`, `/retrieval/*`, `/llm/*`, `/export/*`, `/package/*`) reject unauthorized requests with HTTP 401.
+  - **Explicit Extension Allowlisting**: Administrators and users can set `DOCUSTRATUM_ALLOWED_EXTENSION_IDS=<extension-id>` (or legacy `WEBRAG_ALLOWED_EXTENSION_IDS`) to restrict CORS exclusively to their trusted DocuStratum Studio extension installation.
+  - **Bearer Token Authentication**: The service supports Bearer token authentication via `DOCUSTRATUM_AUTH_TOKEN` (or `WEBRAG_AUTH_TOKEN`) or a local session token file (`~/.docustratum/auth_token` or `~/.webrag/auth_token` permissions `0600`). Sensitive operations (`/search`, `/embed`, `/retrieval/*`, `/llm/*`, `/export/*`, `/package/*`) reject unauthorized requests with HTTP 401.
 
 ### 2. Streaming Request Size & Memory Exhaustion (DoS)
 - **Threat**: Adversarial clients could send oversized or endless chunked HTTP request streams without a `Content-Length` header to exhaust daemon memory.
@@ -45,7 +45,7 @@ WebRAG Studio is designed with a local-first, privacy-preserving architecture. T
 
 ## Vulnerability Reporting
 
-If you discover a potential security vulnerability in WebRAG Studio:
+If you discover a potential security vulnerability in DocuStratum Studio:
 
 1. **Do not** open a public GitHub issue.
 2. Submit details through GitHub Private Vulnerability Reporting or email the maintainers directly.

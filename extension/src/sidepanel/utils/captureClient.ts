@@ -73,15 +73,37 @@ export async function requestCapture(mode: CaptureMode): Promise<CaptureResult> 
 
   try {
     return await sendCaptureMessage();
-  } catch {
-    // Inject only after an explicit user action. This keeps the extension from
-    // holding persistent access to every page while preserving the P0 workflow.
-    try {
-      await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] });
-      return await sendCaptureMessage();
-    } catch (error) {
-      const detail = error instanceof Error ? error.message : 'unknown browser error';
-      throw new Error(`Unable to start capture on this page (${detail}). Refresh the page and retry.`);
+  } catch (initialErr) {
+    // Check if the current tab is a local file:// URL which requires explicit Chrome extension permission
+    if (tab.url?.startsWith('file://')) {
+      try {
+        await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] });
+      } catch {
+        throw new Error(
+          'Chrome blocks file:// access by default. Please visit the fixture at http://127.0.0.1:8000/demo or enable "Allow access to file URLs" in chrome://extensions -> DocuStratum Studio -> Details.'
+        );
+      }
+    } else {
+      try {
+        await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] });
+      } catch (scriptErr) {
+        const detail = scriptErr instanceof Error ? scriptErr.message : 'script injection failed';
+        throw new Error(`Unable to inject capture script into page (${detail}). Refresh the page and retry.`);
+      }
     }
+
+    // Allow content script time to initialize listeners and retry sending message
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await new Promise((r) => setTimeout(r, 120));
+      try {
+        return await sendCaptureMessage();
+      } catch (retryErr) {
+        if (attempt === 2) {
+          const detail = retryErr instanceof Error ? retryErr.message : 'connection timed out';
+          throw new Error(`Unable to connect to capture engine (${detail}). Refresh the tab and retry.`);
+        }
+      }
+    }
+    throw initialErr;
   }
 }

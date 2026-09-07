@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-echo "=== WebRAG Studio Automated Quality Gate ==="
+echo "=== DocuStratum Studio Automated Quality Gate ==="
 echo ""
 
 # Determine Python environment
