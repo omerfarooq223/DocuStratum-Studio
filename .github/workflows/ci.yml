@@ -1,0 +1,80 @@
+name: WebRAG Studio CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  extension-check:
+    name: Extension Lint, Type-Check & Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+          cache-dependency-path: 'extension/package-lock.json'
+
+      - name: Install extension dependencies
+        run: |
+          cd extension
+          npm ci
+
+      - name: Type check extension
+        run: |
+          cd extension
+          npm run type-check
+
+      - name: Run extension unit tests
+        run: |
+          cd extension
+          npm test
+
+      - name: Build extension distribution
+        run: |
+          cd extension
+          npm run build
+
+  backend-check:
+    name: Companion Service Tests & Hardening
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: 'service/requirements-dev.txt'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r service/requirements-dev.txt
+
+      - name: Run fast unit tests
+        run: |
+          PYTHONPATH=. pytest service/tests -v -m "not real_model"
+
+      - name: Validate sample package
+        run: |
+          PYTHONPATH=. python -c "
+          from service.packager.validator import validate_package_zip
+          from service.packager.exporter import PackageExporter
+          from service.models import CaptureResultModel, CaptureModel, BlockModel, SourceAnchor, TextQuote, ChunkModel, ChunkSourceSpan
+          cap = CaptureModel(id='c1', url='https://test.local', title='Test', mode='page', timestamp='2026-08-20T00:00:00Z', contentHash='h1')
+          b1 = BlockModel(id='b1', type='paragraph', content='Evidence text.', headingPath=['Intro'], sourceAnchor=SourceAnchor(blockId='b1', headingPath=['Intro'], cssSelector='p', textQuote=TextQuote(exact='Evidence text.')), contentHash='hb1')
+          chk = ChunkModel(id='k1', sourceNamespace='test', strategy='heading_aware', sequence=0, content='Evidence text.', sourceBlockIds=['b1'], sourceSpans=[ChunkSourceSpan(blockId='b1', startOffset=0, endOffset=14, overlapCharacters=0)], headingPath=['Intro'], tokenCount=2, characterCount=14, contentHash='hk1')
+          zip_bytes, _ = PackageExporter.build_package_zip(CaptureResultModel(capture=cap, blocks=[b1]), [chk])
+          report = validate_package_zip(zip_bytes)
+          assert report.valid, [i.message for i in report.issues]
+          print('Package export and validation successful.')
+          "
