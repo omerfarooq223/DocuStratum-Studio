@@ -6,7 +6,9 @@ import {
   CaptureMode,
   HealthResponse,
   VersionResponse,
+  LLMProviderStatusResponse,
 } from '../../../packages/schema';
+import { fetchLLMStatus } from './utils/llmClient';
 import { generateCleanedMarkdown } from './utils/markdown';
 import { calculateExtractionMetrics } from './utils/metrics';
 import { saveDraftCapture, loadDraftCapture, clearDraftCapture } from './utils/storage';
@@ -39,6 +41,7 @@ export const App: React.FC = () => {
   // Legal modal state
   const [isLegalModalOpen, setIsLegalModalOpen] = useState<boolean>(false);
   const [legalActiveTab, setLegalActiveTab] = useState<LegalPolicyTab>('privacy');
+  const [llmStatus, setLlmStatus] = useState<LLMProviderStatusResponse | null>(null);
 
   const handleOpenLegal = (tab: LegalPolicyTab) => {
     setLegalActiveTab(tab);
@@ -63,13 +66,14 @@ export const App: React.FC = () => {
     () => new Set(),
   );
 
-  // Check health of local FastAPI backend
+  // Check health of local FastAPI backend & LLM status
   const checkHealth = async () => {
     setHealthState('checking');
     try {
-      const [healthRes, versionRes] = await Promise.all([
+      const [healthRes, versionRes, llmRes] = await Promise.all([
         fetch(`${SERVICE_URL}/health`),
         fetch(`${SERVICE_URL}/version`),
+        fetchLLMStatus().catch(() => null),
       ]);
 
       if (!healthRes.ok || !versionRes.ok) {
@@ -81,6 +85,7 @@ export const App: React.FC = () => {
 
       setHealth(healthData);
       setVersion(versionData);
+      if (llmRes) setLlmStatus(llmRes);
       setHealthState('healthy');
     } catch {
       setHealthState('offline');
@@ -321,10 +326,19 @@ export const App: React.FC = () => {
       {/* Extension Header */}
       <header className="header" role="banner">
         <div className="logo-group">
-          <div className="logo-icon" aria-hidden="true">D</div>
+          <img src="/icons/icon-48.png" alt="DocuStratum Studio" className="logo-icon-img" width="28" height="28" />
           <h1 className="title">DocuStratum Studio</h1>
         </div>
         <div className="header-actions">
+          {llmStatus?.hasApiKey && (
+            <span
+              className="badge-model-active"
+              title={`Active Grounded LLM: ${llmStatus.provider.toUpperCase()} (${llmStatus.model})`}
+            >
+              <span className="sparkle-icon">✨</span>
+              <span>{llmStatus.provider === 'gemini' ? 'Gemini 3.5 Flash' : llmStatus.model}</span>
+            </span>
+          )}
           {!isFullTab && (
             <button
               type="button"
@@ -483,6 +497,7 @@ export const App: React.FC = () => {
                   chunks={allChunks}
                   blocksMap={blocksMap}
                   headingPaths={headingPaths}
+                  sourceUrl={captureResult.capture.url}
                   onInspectBlock={(blockId) => handleHighlightBlocks([blockId])}
                   onInspectChunk={() => setActiveTab('chunks')}
                 />

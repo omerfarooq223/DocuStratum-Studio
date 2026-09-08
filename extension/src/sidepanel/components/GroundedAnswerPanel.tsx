@@ -8,6 +8,7 @@ import {
 } from '../../../../packages/schema';
 import { fetchLLMStatus, streamGroundedAnswer } from '../utils/llmClient';
 import { computeGroundedness, computeAnswerRelevance } from '../utils/evaluationMetrics';
+import { highlightSourceBlockInTab } from '../utils/highlighterClient';
 import { StaleSourceWarning } from './StaleSourceWarning';
 import { SavedBlockPreviewModal } from './SavedBlockPreviewModal';
 
@@ -15,6 +16,7 @@ interface GroundedAnswerPanelProps {
   query: string;
   chunks: Chunk[];
   blocksMap: Map<string, Block>;
+  sourceUrl?: string;
   onInspectBlock?: (blockId: string) => void;
 }
 
@@ -22,6 +24,7 @@ export const GroundedAnswerPanel: React.FC<GroundedAnswerPanelProps> = ({
   query,
   chunks,
   blocksMap,
+  sourceUrl,
   onInspectBlock,
 }) => {
   const [providerStatus, setProviderStatus] = useState<LLMProviderStatusResponse | null>(null);
@@ -112,35 +115,14 @@ export const GroundedAnswerPanel: React.FC<GroundedAnswerPanelProps> = ({
 
     setHighlightStatus('highlighting');
 
-    try {
-      if (typeof chrome === 'undefined' || !chrome.tabs?.query) {
-        setHighlightStatus('stale');
-        setStaleReason('Browser tab messaging is unavailable. View saved block preview instead.');
-        setPreviewBlock(block);
-        return;
-      }
-
-      const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (!activeTab?.id) {
-        throw new Error('No active browser tab found.');
-      }
-
-      const response = await chrome.tabs.sendMessage(activeTab.id, {
-        action: 'HIGHLIGHT_SOURCE_BLOCK',
-        target: block.sourceAnchor,
-      });
-
-      if (response && response.ok) {
-        setHighlightStatus('idle');
-        setStaleReason(null);
-      } else {
-        setHighlightStatus('stale');
-        setStaleReason(response?.reason || 'Live element is missing or changed.');
-        setPreviewBlock(block);
-      }
-    } catch (err: any) {
+    const result = await highlightSourceBlockInTab(block.sourceAnchor, sourceUrl);
+    if (result.ok) {
+      setHighlightStatus('idle');
+      setStaleReason(null);
+      setPreviewBlock(null);
+    } else {
       setHighlightStatus('stale');
-      setStaleReason(err?.message || 'Could not connect to live page content script.');
+      setStaleReason(result.reason || 'Live element is missing or changed.');
       setPreviewBlock(block);
     }
   };
@@ -155,7 +137,9 @@ export const GroundedAnswerPanel: React.FC<GroundedAnswerPanelProps> = ({
             Grounded LLM Answer
           </h4>
           <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-950/80 text-indigo-300 border border-indigo-700/50">
-            {providerStatus?.model || 'llama-3.3-70b-versatile'}
+            {providerStatus?.provider
+              ? `${providerStatus.provider.toUpperCase()}${providerStatus.model ? ` · ${providerStatus.model}` : ''}`
+              : providerStatus?.model || 'LLM Ready'}
           </span>
         </div>
 
@@ -183,10 +167,10 @@ export const GroundedAnswerPanel: React.FC<GroundedAnswerPanelProps> = ({
       {providerStatus && !providerStatus.hasApiKey && (
         <div className="bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-xs text-slate-400 space-y-1">
           <div className="flex items-center gap-1.5 text-amber-400 font-semibold">
-            <span>ℹ️ Groq API Key Not Configured</span>
+            <span>ℹ️ LLM / Groq API Key Not Configured</span>
           </div>
           <p className="text-[11px] text-slate-400">
-            Set <code className="text-slate-200 bg-slate-900 px-1 py-0.5 rounded">GROQ_API_KEY</code> in your service environment to enable grounded generative answers. Capture, vector retrieval, and RAG export remain 100% functional without an LLM.
+            Set <code className="text-slate-200 bg-slate-900 px-1 py-0.5 rounded">GEMINI_API_KEY</code> or <code className="text-slate-200 bg-slate-900 px-1 py-0.5 rounded">GROQ_API_KEY</code> in your service environment to enable grounded generative answers. Capture, vector retrieval, and RAG export remain 100% functional without an LLM.
           </p>
         </div>
       )}

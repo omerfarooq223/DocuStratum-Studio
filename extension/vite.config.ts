@@ -35,9 +35,7 @@ function extensionPlugins() {
       // Copy public assets to dist root if present
       const publicDir = resolve(import.meta.dirname, 'public');
       if (fs.existsSync(publicDir)) {
-        for (const file of fs.readdirSync(publicDir)) {
-          fs.copyFileSync(resolve(publicDir, file), resolve(import.meta.dirname, 'dist', file));
-        }
+        fs.cpSync(publicDir, resolve(import.meta.dirname, 'dist'), { recursive: true });
       }
     }
   };

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Block } from '../../../../packages/schema';
 
 interface SavedBlockPreviewModalProps {
@@ -12,55 +12,80 @@ export const SavedBlockPreviewModal: React.FC<SavedBlockPreviewModalProps> = ({
   isOpen,
   onClose,
 }) => {
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    closeBtnRef.current?.focus();
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-      <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+    <div
+      className="modal-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="saved-preview-modal-title"
+      onClick={onClose}
+    >
+      <div
+        className="modal-content saved-preview-modal"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
-        <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
-          <div className="flex items-center gap-2">
-            <span className="px-2 py-0.5 rounded text-[11px] font-mono bg-blue-900/60 text-blue-300 border border-blue-700/50 uppercase">
+        <div className="modal-header">
+          <div className="saved-preview-title-group">
+            <span className="saved-preview-type-badge">
               {block.type}
             </span>
-            <h3 className="font-semibold text-slate-200 text-sm truncate max-w-xs">
+            <h3 id="saved-preview-modal-title" className="modal-title">
               Saved Preview: {block.id}
             </h3>
           </div>
           <button
+            ref={closeBtnRef}
+            type="button"
+            className="btn-close-modal"
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-200 text-lg leading-none px-2 py-1 rounded"
+            aria-label="Close saved block preview"
           >
             ✕
           </button>
         </div>
 
         {/* Content Body */}
-        <div className="p-4 overflow-y-auto space-y-3 text-xs">
-          <div>
-            <label className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Heading Path</label>
-            <p className="text-slate-300 font-mono text-[11px] mt-0.5">
-              {block.headingPath.length > 0 ? block.headingPath.join(' > ') : '(Root)'}
+        <div className="saved-preview-body">
+          <div className="saved-preview-field">
+            <span className="saved-preview-label">HEADING PATH</span>
+            <p className="saved-preview-path-text">
+              {block.headingPath.length > 0 ? block.headingPath.join(' › ') : '(Root / No Heading)'}
             </p>
           </div>
 
-          <div>
-            <label className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Captured Block Text</label>
-            <div className="mt-1 p-3 bg-slate-950 rounded-lg border border-slate-800 text-slate-200 font-mono whitespace-pre-wrap leading-relaxed">
+          <div className="saved-preview-field">
+            <span className="saved-preview-label">CAPTURED BLOCK TEXT</span>
+            <div className="saved-preview-content-box">
               {block.content}
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 text-[11px] bg-slate-950/50 p-2.5 rounded border border-slate-800/80">
-            <div>
-              <span className="text-slate-500">CSS Selector:</span>
-              <p className="font-mono text-slate-400 truncate" title={block.sourceAnchor.cssSelector}>
+          <div className="saved-preview-meta-grid">
+            <div className="saved-preview-meta-item">
+              <span className="saved-preview-meta-label">CSS Selector</span>
+              <p className="saved-preview-meta-value" title={block.sourceAnchor.cssSelector}>
                 {block.sourceAnchor.cssSelector || 'N/A'}
               </p>
             </div>
-            <div>
-              <span className="text-slate-500">Content Hash:</span>
-              <p className="font-mono text-slate-400 truncate" title={block.contentHash}>
+            <div className="saved-preview-meta-item">
+              <span className="saved-preview-meta-label">Content Hash</span>
+              <p className="saved-preview-meta-value" title={block.contentHash}>
                 {block.contentHash}
               </p>
             </div>
@@ -68,10 +93,11 @@ export const SavedBlockPreviewModal: React.FC<SavedBlockPreviewModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="px-4 py-2.5 border-t border-slate-800 bg-slate-950/40 flex justify-end">
+        <div className="saved-preview-footer">
           <button
+            type="button"
             onClick={onClose}
-            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded transition"
+            className="btn-modal-action"
           >
             Close Preview
           </button>

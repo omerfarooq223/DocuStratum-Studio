@@ -68,15 +68,17 @@ export const TestQuestionManager: React.FC<TestQuestionManagerProps> = ({
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-3">
-      <div className="flex items-center justify-between">
-        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300">
-          Evaluation Test Questions
-        </h4>
-        <div className="flex gap-1.5">
+    <div className="debugger-card">
+      <div className="debugger-panel-header">
+        <div className="debugger-title-group">
+          <span className="section-label">EVALUATION TEST QUESTIONS</span>
+          <span className="debugger-panel-subtitle">Ground Truth QA Suite</span>
+        </div>
+        <div className="debugger-header-actions">
           <button
+            type="button"
             onClick={() => setMode(mode === 'create' ? 'list' : 'create')}
-            className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded transition"
+            className="btn-debugger-action"
           >
             {mode === 'create' ? 'Cancel' : '+ New Question'}
           </button>
@@ -85,25 +87,25 @@ export const TestQuestionManager: React.FC<TestQuestionManagerProps> = ({
 
       {/* Manual Creation Form */}
       {mode === 'create' ? (
-        <form onSubmit={handleCreateManual} className="space-y-2.5 bg-slate-950 p-3 rounded-lg border border-slate-800 text-xs">
-          <div>
-            <label className="block text-slate-400 mb-1 font-medium">Question / Query</label>
+        <form onSubmit={handleCreateManual} className="debugger-form-well">
+          <div className="debugger-form-group">
+            <label className="debugger-form-label">Question / Query</label>
             <input
               type="text"
               required
               value={newQuery}
               onChange={(e) => setNewQuery(e.target.value)}
               placeholder="e.g., What are the token limits for heading-aware chunking?"
-              className="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-blue-500"
+              className="debugger-input"
             />
           </div>
 
-          <div>
-            <label className="block text-slate-400 mb-1 font-medium">Expected Target Block (Ground Truth)</label>
+          <div className="debugger-form-group">
+            <label className="debugger-form-label">Expected Target Block (Ground Truth)</label>
             <select
               value={selectedBlockId}
               onChange={(e) => setSelectedBlockId(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-blue-500"
+              className="debugger-select"
             >
               <option value="">(None - Unsupervised query)</option>
               {blocks.map((b) => (
@@ -114,28 +116,28 @@ export const TestQuestionManager: React.FC<TestQuestionManagerProps> = ({
             </select>
           </div>
 
-          <div>
-            <label className="block text-slate-400 mb-1 font-medium">Notes (optional)</label>
+          <div className="debugger-form-group">
+            <label className="debugger-form-label">Notes (optional)</label>
             <input
               type="text"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="e.g., Tests heading edge case"
-              className="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-blue-500"
+              className="debugger-input"
             />
           </div>
 
-          <div className="flex justify-end gap-2 pt-1">
+          <div className="debugger-form-actions">
             <button
               type="button"
               onClick={() => setMode('list')}
-              className="px-3 py-1 bg-slate-800 text-slate-300 rounded hover:bg-slate-700"
+              className="btn-cancel-action"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-3 py-1 bg-blue-600 text-white rounded font-medium hover:bg-blue-500"
+              className="btn-save-action"
             >
               Save Question
             </button>
@@ -144,28 +146,29 @@ export const TestQuestionManager: React.FC<TestQuestionManagerProps> = ({
       ) : null}
 
       {/* LLM Draft Generator Panel */}
-      <div className="bg-slate-950/70 p-2.5 rounded-lg border border-slate-800/80 text-xs">
-        <div className="flex items-center justify-between mb-1.5">
-          <span className="text-slate-400 font-medium">Auto-Draft with LLM</span>
+      <div className="debugger-draft-panel">
+        <div className="draft-panel-header">
+          <span className="draft-panel-title">Auto-Draft with LLM</span>
           <button
+            type="button"
             disabled={isGeneratingDrafts || selectedForDraft.size === 0}
             onClick={() => onRequestDraftQuestions(Array.from(selectedForDraft))}
-            className="px-2.5 py-1 bg-indigo-600/30 hover:bg-indigo-600/40 text-indigo-200 border border-indigo-500/40 rounded text-xs font-medium disabled:opacity-40 transition"
+            className="btn-draft-action"
           >
-            {isGeneratingDrafts ? 'Drafting...' : `Generate from (${selectedForDraft.size}) blocks`}
+            {isGeneratingDrafts ? 'Drafting…' : `Generate from (${selectedForDraft.size}) blocks`}
           </button>
         </div>
-        <div className="max-h-24 overflow-y-auto space-y-1 pr-1">
+        <div className="draft-blocks-scroll">
           {blocks.slice(0, 10).map((b) => (
-            <label key={b.id} className="flex items-center gap-2 text-[11px] text-slate-300 cursor-pointer hover:bg-slate-900/60 p-1 rounded">
+            <label key={b.id} className="draft-block-option">
               <input
                 type="checkbox"
                 checked={selectedForDraft.has(b.id)}
                 onChange={() => toggleDraftBlockSelect(b.id)}
-                className="rounded border-slate-700"
+                className="draft-checkbox"
               />
-              <span className="font-mono text-slate-500">[{b.id}]</span>
-              <span className="truncate">{b.content.slice(0, 45)}...</span>
+              <span className="draft-block-id">[{b.id}]</span>
+              <span className="draft-block-text">{b.content.slice(0, 50)}…</span>
             </label>
           ))}
         </div>
@@ -173,33 +176,35 @@ export const TestQuestionManager: React.FC<TestQuestionManagerProps> = ({
 
       {/* Review Queue (Drafts) */}
       {draftQuestions.length > 0 && (
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between text-[11px] text-amber-400 font-bold uppercase tracking-wider">
-            <span>LLM Draft Review Queue ({draftQuestions.length})</span>
-            <span className="text-[10px] text-amber-500/80 font-normal">Requires review before eval</span>
+        <div className="debugger-review-queue">
+          <div className="review-queue-header">
+            <span className="section-label text-warning">LLM DRAFT REVIEW QUEUE ({draftQuestions.length})</span>
+            <span className="review-queue-hint">Requires review before evaluation</span>
           </div>
           {draftQuestions.map((draft) => (
-            <div key={draft.id} className="bg-amber-950/20 border border-amber-500/30 rounded p-2 text-xs space-y-1.5">
-              <div className="flex items-start justify-between gap-2">
+            <div key={draft.id} className="review-draft-item">
+              <div className="draft-query-input-wrap">
                 <input
                   type="text"
                   value={draft.query}
                   onChange={(e) => onSaveQuestion({ ...draft, query: e.target.value })}
-                  className="w-full bg-slate-900/90 border border-amber-600/40 rounded px-2 py-1 text-slate-200 text-xs"
+                  className="debugger-input draft-edit-input"
                 />
               </div>
-              <div className="flex items-center justify-between text-[10px] text-slate-400">
-                <span>Target: <strong>{draft.generatedFromBlockId || 'N/A'}</strong></span>
-                <div className="flex gap-1.5">
+              <div className="draft-footer-row">
+                <span className="draft-target-info">Target: <strong>{draft.generatedFromBlockId || 'N/A'}</strong></span>
+                <div className="draft-actions">
                   <button
+                    type="button"
                     onClick={() => onDeleteQuestion(draft.id)}
-                    className="px-2 py-0.5 bg-rose-950 text-rose-300 hover:bg-rose-900 rounded"
+                    className="btn-discard"
                   >
                     Discard
                   </button>
                   <button
+                    type="button"
                     onClick={() => handleAcceptDraft(draft)}
-                    className="px-2 py-0.5 bg-emerald-700 text-white hover:bg-emerald-600 rounded font-medium"
+                    className="btn-accept"
                   >
                     Accept into Eval Set
                   </button>
@@ -211,35 +216,35 @@ export const TestQuestionManager: React.FC<TestQuestionManagerProps> = ({
       )}
 
       {/* Curated Questions List */}
-      <div className="space-y-1">
-        <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider block">
-          Curated Set ({curatedQuestions.length})
-        </span>
+      <div className="debugger-curated-section">
+        <div className="curated-section-header">
+          <span className="section-label">CURATED BENCHMARK SET ({curatedQuestions.length})</span>
+        </div>
         {curatedQuestions.length === 0 ? (
-          <p className="text-xs text-slate-500 py-2">No test questions created yet.</p>
+          <p className="debugger-empty-text">No test questions created yet.</p>
         ) : (
-          <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
+          <div className="curated-questions-list">
             {curatedQuestions.map((q) => (
-              <div
-                key={q.id}
-                className="bg-slate-950 p-2 rounded border border-slate-800 hover:border-slate-700 flex items-center justify-between gap-2 text-xs"
-              >
-                <div className="truncate flex-1">
-                  <span className="text-slate-200 block truncate font-medium">{q.query}</span>
-                  <span className="text-[10px] text-slate-500 font-mono">
+              <div key={q.id} className="curated-question-item">
+                <div className="curated-item-meta">
+                  <span className="curated-query-text">{q.query}</span>
+                  <span className="curated-target-tag">
                     Expected: {q.expectedBlockId || 'None'}
                   </span>
                 </div>
-                <div className="flex items-center gap-1 shrink-0">
+                <div className="curated-item-actions">
                   <button
+                    type="button"
                     onClick={() => onSelectQuestion(q)}
-                    className="px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white text-[11px] rounded font-medium"
+                    className="btn-run-question"
                   >
                     Run
                   </button>
                   <button
+                    type="button"
                     onClick={() => onDeleteQuestion(q.id)}
-                    className="text-slate-500 hover:text-rose-400 p-1 text-xs"
+                    className="btn-delete-question"
+                    aria-label="Delete question"
                   >
                     ✕
                   </button>

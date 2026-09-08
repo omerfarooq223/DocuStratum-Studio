@@ -3,14 +3,14 @@ import {
   CaptureResult,
   Chunk,
   ChunkingStrategy,
-  RetrievalResult,
   RetrievalEvaluationResult,
   TestQuestion,
+  RetrievalResult,
 } from '../../../../packages/schema';
-import { computeRetrievalEvaluation, calculateAggregateMetrics } from '../utils/evaluationMetrics';
+import { calculateAggregateMetrics, computeRetrievalEvaluation } from '../utils/evaluationMetrics';
 import { queryRetrievalService, generateDraftQuestionsService } from '../utils/retrievalClient';
-import { RetrievalResultCard } from './RetrievalResultCard';
 import { EvaluationMetricsPanel } from './EvaluationMetricsPanel';
+import { RetrievalResultCard } from './RetrievalResultCard';
 import { TestQuestionManager } from './TestQuestionManager';
 import { GroundedAnswerPanel } from './GroundedAnswerPanel';
 
@@ -27,13 +27,14 @@ export const RetrievalDebugger: React.FC<RetrievalDebuggerProps> = ({
 }) => {
   const [query, setQuery] = useState('');
   const [strategy, setStrategy] = useState<ChunkingStrategy>('recursive');
-  const [topK, setTopK] = useState(5);
+  const [topK, setTopK] = useState<number>(5);
   const [expectedBlockId, setExpectedBlockId] = useState<string>('');
-
   const [isLoading, setIsLoading] = useState(false);
-  const [isGeneratingDrafts, setIsGeneratingDrafts] = useState(false);
   const [results, setResults] = useState<RetrievalResult[]>([]);
   const [evalRuns, setEvalRuns] = useState<RetrievalEvaluationResult[]>([]);
+  const [isGeneratingDrafts, setIsGeneratingDrafts] = useState(false);
+
+  // Curated Questions State
   const [questions, setQuestions] = useState<TestQuestion[]>([
     {
       id: 'q_fixture_1',
@@ -70,13 +71,13 @@ export const RetrievalDebugger: React.FC<RetrievalDebuggerProps> = ({
   const activeChunks = strategy === 'recursive' ? recursiveChunks : headingChunks;
 
   const handleRunQuery = async (
-    customQuery?: string,
-    customExpectedId?: string,
+    overrideQuery?: string,
+    overrideExpectedBlockId?: string,
     questionId?: string
   ) => {
-    const activeQ = customQuery ?? query;
-    const activeExpected = customExpectedId ?? expectedBlockId;
-    if (!activeQ.trim()) return;
+    const activeQ = overrideQuery !== undefined ? overrideQuery : query;
+    const activeExpected = overrideExpectedBlockId !== undefined ? overrideExpectedBlockId : expectedBlockId;
+    if (!activeQ.trim() || activeChunks.length === 0) return;
 
     setIsLoading(true);
     const start = performance.now();
@@ -89,9 +90,7 @@ export const RetrievalDebugger: React.FC<RetrievalDebuggerProps> = ({
         chunks: activeChunks,
       });
 
-      const end = performance.now();
-      const measuredLatencyMs = Math.round(end - start);
-
+      const latencyMs = Math.round(performance.now() - start);
       setResults(response.results);
 
       const evaluation = computeRetrievalEvaluation({
@@ -100,7 +99,7 @@ export const RetrievalDebugger: React.FC<RetrievalDebuggerProps> = ({
         expectedBlockId: activeExpected || undefined,
         strategy,
         topK,
-        measuredLatencyMs,
+        measuredLatencyMs: latencyMs,
         results: response.results,
       });
 
@@ -119,13 +118,29 @@ export const RetrievalDebugger: React.FC<RetrievalDebuggerProps> = ({
   };
 
   const handleDraftQuestionsRequest = async (selectedBlockIds: string[]) => {
+    if (selectedBlockIds.length === 0) return;
     setIsGeneratingDrafts(true);
+
     try {
       const targetBlocks = captureResult.blocks.filter((b) => selectedBlockIds.includes(b.id));
       const drafts = await generateDraftQuestionsService(targetBlocks);
       setQuestions((prev) => [...drafts, ...prev]);
-    } catch (err) {
-      console.error('Draft generation error:', err);
+    } catch {
+      // Fallback to local draft candidates if service is unavailable
+      const draftCandidates: TestQuestion[] = selectedBlockIds.map((blockId) => {
+        const block = blocksMap.get(blockId);
+        const excerpt = block ? block.content.slice(0, 60).replace(/\n/g, ' ') : 'content';
+        return {
+          id: `draft_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          query: `What information is described in: "${excerpt}..."?`,
+          expectedBlockId: blockId,
+          generatedFromBlockId: blockId,
+          status: 'draft',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+      });
+      setQuestions((prev) => [...draftCandidates, ...prev]);
     } finally {
       setIsGeneratingDrafts(false);
     }
@@ -135,50 +150,52 @@ export const RetrievalDebugger: React.FC<RetrievalDebuggerProps> = ({
   const aggregateMetrics = useMemo(() => calculateAggregateMetrics(evalRuns), [evalRuns]);
 
   return (
-    <div className="space-y-4 pb-8">
+    <div className="debugger-view-container">
       {/* Metrics Header */}
       <EvaluationMetricsPanel latestEval={latestEval} aggregate={aggregateMetrics} />
 
       {/* Query Bar */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-3">
-        <div className="flex gap-2">
+      <div className="debugger-query-card">
+        <div className="search-input-wrapper">
+          <span className="search-icon">🔍</span>
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleRunQuery()}
             placeholder="Type query to test retrieval & visual trace..."
-            className="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-blue-500 font-sans"
+            className="search-input"
           />
           <button
+            type="button"
             onClick={() => handleRunQuery()}
             disabled={isLoading || !query.trim()}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition"
+            className="search-submit-btn"
           >
-            {isLoading ? 'Searching...' : 'Retrieve'}
+            {isLoading ? 'Searching…' : 'Retrieve'}
           </button>
         </div>
 
         {/* Chunker & Ground Truth Selectors */}
-        <div className="grid grid-cols-3 gap-2 text-xs">
-          <div>
-            <label className="text-[10px] text-slate-500 uppercase font-bold block mb-1">Chunker</label>
+        <div className="debugger-controls-grid">
+          <div className="debugger-control-group">
+            <label className="debugger-control-label">Chunker</label>
             <select
               value={strategy}
               onChange={(e) => setStrategy(e.target.value as ChunkingStrategy)}
-              className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-slate-300 text-xs"
+              className="debugger-select"
             >
               <option value="recursive">Recursive Chunks ({recursiveChunks.length})</option>
               <option value="heading_aware">Heading-Aware ({headingChunks.length})</option>
             </select>
           </div>
 
-          <div>
-            <label className="text-[10px] text-slate-500 uppercase font-bold block mb-1">Top-K</label>
+          <div className="debugger-control-group">
+            <label className="debugger-control-label">Top-K</label>
             <select
               value={topK}
               onChange={(e) => setTopK(Number(e.target.value))}
-              className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-slate-300 text-xs"
+              className="debugger-select"
             >
               <option value={3}>Top 3</option>
               <option value={5}>Top 5</option>
@@ -186,17 +203,17 @@ export const RetrievalDebugger: React.FC<RetrievalDebuggerProps> = ({
             </select>
           </div>
 
-          <div>
-            <label className="text-[10px] text-slate-500 uppercase font-bold block mb-1">Expected Block</label>
+          <div className="debugger-control-group">
+            <label className="debugger-control-label">Expected Block (Ground Truth)</label>
             <select
               value={expectedBlockId}
               onChange={(e) => setExpectedBlockId(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-slate-300 text-xs"
+              className="debugger-select"
             >
               <option value="">(None)</option>
               {captureResult.blocks.map((b) => (
                 <option key={b.id} value={b.id}>
-                  [{b.id}] {b.content.slice(0, 20)}...
+                  [{b.id}] {b.content.slice(0, 30)}…
                 </option>
               ))}
             </select>
@@ -205,24 +222,25 @@ export const RetrievalDebugger: React.FC<RetrievalDebuggerProps> = ({
       </div>
 
       {/* Results Section */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between text-xs text-slate-400 font-bold uppercase tracking-wider">
-          <span>Retrieved Chunks ({results.length})</span>
-          {results.length > 0 && <span className="font-mono text-slate-500">Strategy: {strategy}</span>}
+      <div className="debugger-results-section">
+        <div className="debugger-results-toolbar">
+          <span className="section-label">RETRIEVED CHUNKS ({results.length})</span>
+          {results.length > 0 && <span className="export-spec-tag">Strategy: {strategy}</span>}
         </div>
 
         {results.length === 0 ? (
-          <div className="bg-slate-900/50 border border-slate-800/80 rounded-xl p-8 text-center text-xs text-slate-500">
-            Execute a query or select a test question below to inspect retrieval rankings.
+          <div className="debugger-empty-state">
+            Execute a query above or select a curated test question below to inspect retrieval rankings.
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="retrieval-results-list">
             {results.map((res) => (
               <RetrievalResultCard
                 key={res.chunkId}
                 result={res}
                 blocksMap={blocksMap}
                 isExpectedMatch={Boolean(expectedBlockId && res.sourceBlockIds.includes(expectedBlockId))}
+                sourceUrl={captureResult.capture.url}
               />
             ))}
           </div>
@@ -230,11 +248,14 @@ export const RetrievalDebugger: React.FC<RetrievalDebuggerProps> = ({
       </div>
 
       {/* Grounded LLM Answer Generation */}
-      <GroundedAnswerPanel
-        query={query}
-        chunks={activeChunks}
-        blocksMap={blocksMap}
-      />
+      {results.length > 0 && query && (
+        <GroundedAnswerPanel
+          query={query}
+          chunks={activeChunks}
+          blocksMap={blocksMap}
+          sourceUrl={captureResult.capture.url}
+        />
+      )}
 
       {/* Evaluation Questions Manager */}
       <TestQuestionManager

@@ -30,13 +30,17 @@ export const ExportPackagePanel: React.FC<ExportPackagePanelProps> = ({
 }) => {
   const [isExporting, setIsExporting] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
+  const [validationReport, setValidationReport] = useState<PackageValidationReport | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
   const [lastExportName, setLastExportName] = useState<string | null>(null);
-  const [validationReport, setValidationReport] = useState<PackageValidationReport | null>(null);
+
+  const includedBlocksCount = captureResult.blocks.filter((b) => b.included !== false).length;
 
   const handleExport = async () => {
     setIsExporting(true);
     setExportError(null);
+    setValidationReport(null);
+
     try {
       const { blob, filename } = await exportRAGPackage({
         captureResult,
@@ -75,133 +79,110 @@ export const ExportPackagePanel: React.FC<ExportPackagePanelProps> = ({
       setValidationReport(report);
       setLastExportName(file.name);
     } catch (err: any) {
-      setExportError(err.message || 'Package validation failed.');
+      setExportError(err.message || 'Validation failed.');
     } finally {
       setIsValidating(false);
+      e.target.value = '';
     }
   };
 
-  const includedBlocksCount = captureResult.blocks.filter((b) => b.included !== false).length;
-
   return (
-    <div className="export-panel" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      {/* Header Info */}
-      <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '8px', padding: '16px' }}>
-        <h3 style={{ margin: '0 0 8px 0', fontSize: '15px', color: '#f8fafc' }}>
-          📦 Portable RAG Package (Vendor-Neutral)
-        </h3>
-        <p style={{ margin: 0, fontSize: '13px', color: '#94a3b8', lineHeight: '1.4' }}>
-          Generate a standardized, cryptographically signed ZIP artifact containing raw blocks, deterministic chunks,
-          evaluation benchmarks, and grounded answers for external consumption.
-        </p>
+    <div className="export-panel-container">
+      {/* Header Info Banner */}
+      <div className="export-header-card">
+        <div className="export-header-meta">
+          <span className="section-label">PORTABLE RAG ARTIFACT</span>
+          <h3 className="export-card-title">Portable RAG Package (Vendor-Neutral)</h3>
+          <p className="export-card-desc">
+            Generate a standardized, cryptographically signed ZIP archive containing raw blocks, deterministic chunks,
+            evaluation benchmarks, and grounded answers for external consumption.
+          </p>
+        </div>
+        <span className="export-status-badge">100% Offline Compatible</span>
       </div>
 
       {/* Package Contents Breakdown */}
-      <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px', padding: '14px' }}>
-        <h4 style={{ margin: '0 0 10px 0', fontSize: '13px', color: '#cbd5e1' }}>Package Manifest Contents:</h4>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '12px' }}>
-          <div style={{ background: '#1e293b', padding: '8px 10px', borderRadius: '4px' }}>
-            <span style={{ color: '#64748b' }}>📄 Cleaned Markdown:</span>{' '}
-            <strong style={{ color: '#38bdf8' }}>source/cleaned.md</strong>
+      <div className="export-manifest-card">
+        <div className="export-manifest-header">
+          <span className="section-label">PACKAGE MANIFEST CONTENTS</span>
+          <span className="export-spec-tag">Spec v1.0.0</span>
+        </div>
+        <div className="export-manifest-grid">
+          <div className="export-manifest-item">
+            <span className="manifest-item-label">Cleaned Markdown</span>
+            <strong className="manifest-item-value">source/cleaned.md</strong>
           </div>
-          <div style={{ background: '#1e293b', padding: '8px 10px', borderRadius: '4px' }}>
-            <span style={{ color: '#64748b' }}>🧱 Semantic Blocks:</span>{' '}
-            <strong style={{ color: '#38bdf8' }}>{includedBlocksCount} blocks</strong>
+          <div className="export-manifest-item">
+            <span className="manifest-item-label">Semantic Blocks</span>
+            <strong className="manifest-item-value">{includedBlocksCount} blocks</strong>
           </div>
-          <div style={{ background: '#1e293b', padding: '8px 10px', borderRadius: '4px' }}>
-            <span style={{ color: '#64748b' }}>✂️ Deterministic Chunks:</span>{' '}
-            <strong style={{ color: '#38bdf8' }}>{chunks.length} chunks</strong>
+          <div className="export-manifest-item">
+            <span className="manifest-item-label">Deterministic Chunks</span>
+            <strong className="manifest-item-value">{chunks.length} chunks</strong>
           </div>
-          <div style={{ background: '#1e293b', padding: '8px 10px', borderRadius: '4px' }}>
-            <span style={{ color: '#64748b' }}>❓ Evaluation Benchmark:</span>{' '}
-            <strong style={{ color: '#38bdf8' }}>{questions.length} questions</strong>
+          <div className="export-manifest-item">
+            <span className="manifest-item-label">Evaluation Benchmark</span>
+            <strong className="manifest-item-value">{questions.length} questions</strong>
           </div>
-          <div style={{ background: '#1e293b', padding: '8px 10px', borderRadius: '4px' }}>
-            <span style={{ color: '#64748b' }}>🔍 Retrieval Runs:</span>{' '}
-            <strong style={{ color: '#38bdf8' }}>{retrievalResults.length} runs</strong>
+          <div className="export-manifest-item">
+            <span className="manifest-item-label">Retrieval Runs</span>
+            <strong className="manifest-item-value">{retrievalResults.length} runs</strong>
           </div>
-          <div style={{ background: '#1e293b', padding: '8px 10px', borderRadius: '4px' }}>
-            <span style={{ color: '#64748b' }}>💬 Grounded Answers:</span>{' '}
-            <strong style={{ color: '#38bdf8' }}>{answers.length} answers</strong>
+          <div className="export-manifest-item">
+            <span className="manifest-item-label">Grounded Answers</span>
+            <strong className="manifest-item-value">{answers.length} answers</strong>
           </div>
         </div>
       </div>
 
       {/* Vector Omission & Reproducibility Notice */}
-      <div style={{ background: 'rgba(56, 189, 248, 0.08)', border: '1px solid rgba(56, 189, 248, 0.2)', borderRadius: '6px', padding: '12px', fontSize: '12px', color: '#bae6fd' }}>
-        <strong>💡 Vector Omission Guarantee:</strong> Dense embedding vectors are intentionally omitted from the portable package to maintain a lightweight footprint. Downstream scripts regenerate vectors deterministically using <code>all-MiniLM-L6-v2</code> (384d, cosine) as specified in <code>manifest.json</code>.
+      <div className="export-notice-card">
+        <span className="notice-icon" aria-hidden="true">ℹ️</span>
+        <div className="notice-content">
+          <strong>Vector Omission Guarantee:</strong> Dense embedding vectors are intentionally omitted from the portable package to maintain a lightweight footprint. Downstream scripts regenerate vectors deterministically using <code>all-MiniLM-L6-v2</code> (384d, cosine) as specified in <code>manifest.json</code>.
+        </div>
       </div>
 
-      {/* Export Action */}
-      <div style={{ display: 'flex', gap: '10px' }}>
+      {/* Export & Validation Actions */}
+      <div className="export-actions-row">
         <button
           type="button"
           onClick={handleExport}
           disabled={isExporting || chunks.length === 0}
-          style={{
-            flex: 1,
-            padding: '10px 16px',
-            backgroundColor: '#2563eb',
-            color: '#ffffff',
-            border: 'none',
-            borderRadius: '6px',
-            fontWeight: 600,
-            fontSize: '13px',
-            cursor: chunks.length === 0 ? 'not-allowed' : 'pointer',
-            opacity: isExporting ? 0.7 : 1,
-          }}
+          className="btn-export-primary"
         >
-          {isExporting ? '⏳ Packaging & Validating...' : '📥 Export Portable RAG Package (.zip)'}
+          {isExporting ? 'Packaging & Validating…' : 'Export Portable RAG Package (.zip)'}
         </button>
 
-        <label
-          style={{
-            padding: '10px 14px',
-            backgroundColor: '#334155',
-            color: '#f8fafc',
-            borderRadius: '6px',
-            fontSize: '12px',
-            fontWeight: 500,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          {isValidating ? 'Checking...' : '🔍 Validate ZIP'}
+        <label className="btn-export-secondary">
+          {isValidating ? 'Validating…' : 'Validate Package ZIP'}
           <input
             type="file"
             accept=".zip"
             onChange={handleFileUpload}
-            style={{ display: 'none' }}
+            className="hidden-file-input"
           />
         </label>
       </div>
 
+      {/* Error Message */}
       {exportError && (
-        <div style={{ background: '#7f1d1d', border: '1px solid #dc2626', borderRadius: '6px', padding: '10px', color: '#fecaca', fontSize: '12px' }}>
+        <div className="export-error-card" role="alert">
           <strong>Error:</strong> {exportError}
         </div>
       )}
 
       {/* Validation Report Card */}
       {validationReport && (
-        <div style={{
-          background: validationReport.valid ? 'rgba(34, 197, 94, 0.08)' : 'rgba(239, 68, 68, 0.08)',
-          border: `1px solid ${validationReport.valid ? '#22c55e' : '#ef4444'}`,
-          borderRadius: '8px',
-          padding: '14px',
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <span style={{ fontWeight: 600, fontSize: '13px', color: validationReport.valid ? '#4ade80' : '#f87171' }}>
-              {validationReport.valid ? '✅ Package Passed All Validation Gates' : '❌ Validation Errors Detected'}
+        <div className={`export-validation-card ${validationReport.valid ? 'valid' : 'invalid'}`}>
+          <div className="validation-header">
+            <span className="validation-status-text">
+              {validationReport.valid ? 'Package Passed All Validation Gates' : 'Validation Errors Detected'}
             </span>
-            <span style={{ fontSize: '11px', color: '#94a3b8' }}>
-              {lastExportName}
-            </span>
+            {lastExportName && <span className="validation-filename">{lastExportName}</span>}
           </div>
 
-          <div style={{ fontSize: '12px', color: '#cbd5e1', display: 'flex', gap: '14px' }}>
+          <div className="validation-stats-row">
             <span>Files: <strong>{validationReport.totalFiles}</strong></span>
             <span>Blocks: <strong>{validationReport.totalBlocks}</strong></span>
             <span>Chunks: <strong>{validationReport.totalChunks}</strong></span>
@@ -210,9 +191,9 @@ export const ExportPackagePanel: React.FC<ExportPackagePanelProps> = ({
           </div>
 
           {validationReport.issues.length > 0 && (
-            <div style={{ marginTop: '10px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '8px' }}>
+            <div className="validation-issues-list">
               {validationReport.issues.map((issue, idx) => (
-                <div key={idx} style={{ fontSize: '11px', color: issue.severity === 'error' ? '#fca5a5' : '#fde047', marginBottom: '4px' }}>
+                <div key={idx} className={`validation-issue ${issue.severity}`}>
                   [{issue.code}] {issue.message}
                 </div>
               ))}
@@ -222,14 +203,13 @@ export const ExportPackagePanel: React.FC<ExportPackagePanelProps> = ({
       )}
 
       {/* Downstream Loading Snippet */}
-      <div style={{ background: '#090d16', border: '1px solid #1e293b', borderRadius: '8px', padding: '12px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-          <span style={{ fontSize: '11px', fontWeight: 600, color: '#94a3b8' }}>
-            DOWNSTREAM PYTHON CONSUMPTION
-          </span>
-          <span style={{ fontSize: '10px', color: '#38bdf8' }}>Zero-Dependency Loader</span>
+      <div className="export-code-card">
+        <div className="export-code-header">
+          <span className="section-label">DOWNSTREAM PYTHON CONSUMPTION</span>
+          <span className="export-spec-tag">Zero-Dependency Loader</span>
         </div>
-        <pre style={{ margin: 0, fontSize: '11px', color: '#a5f3fc', overflowX: 'auto', fontFamily: 'monospace' }}>
+        <div className="export-code-box">
+          <pre className="export-code-pre">
 {`from service.packager.loader import RAGPackage
 
 with RAGPackage.open("docustratum-package.zip") as pkg:
@@ -242,7 +222,8 @@ with RAGPackage.open("docustratum-package.zip") as pkg:
         prov = pkg.get_chunk_with_provenance(chunk["id"])
         print(f"Chunk: {chunk['id']}, Strategy: {chunk['strategy']}")
         print(f"Source Blocks: {[b['id'] for b in prov['sourceBlocks']]}")`}
-        </pre>
+          </pre>
+        </div>
       </div>
     </div>
   );

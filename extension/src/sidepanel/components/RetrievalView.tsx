@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Chunk, RetrievalResult, ChunkingStrategy, ModelStatusResponse, Block } from '../../../../packages/schema';
 import { fetchModelStatus, searchLocalChunks, RetrievalServiceError } from '../../retrieval/client';
 import { SearchResultCard } from './SearchResultCard';
@@ -8,6 +8,7 @@ interface RetrievalViewProps {
   chunks: Chunk[];
   blocksMap?: Map<string, Block>;
   headingPaths?: string[][];
+  sourceUrl?: string;
   onInspectBlock?: (blockId: string) => void;
   onInspectChunk?: (chunkId: string) => void;
 }
@@ -16,6 +17,7 @@ export const RetrievalView: React.FC<RetrievalViewProps> = ({
   chunks,
   blocksMap = new Map(),
   headingPaths = [],
+  sourceUrl,
   onInspectBlock,
   onInspectChunk
 }) => {
@@ -107,6 +109,29 @@ export const RetrievalView: React.FC<RetrievalViewProps> = ({
     setLatencyMs(null);
     setError(null);
   };
+
+  // Prioritize chunks matching the search results in rank order for grounded answer generation
+  const candidateChunksForLLM = useMemo(() => {
+    if (results.length === 0) return chunks;
+    const chunkMap = new Map(chunks.map((c) => [c.id, c]));
+    const ranked: Chunk[] = [];
+    const seenIds = new Set<string>();
+    for (const r of results) {
+      const c = chunkMap.get(r.chunkId);
+      if (c && !seenIds.has(c.id)) {
+        seenIds.add(c.id);
+        ranked.push(c);
+      }
+    }
+    // Append any remaining chunks
+    for (const c of chunks) {
+      if (!seenIds.has(c.id)) {
+        seenIds.add(c.id);
+        ranked.push(c);
+      }
+    }
+    return ranked;
+  }, [results, chunks]);
 
   return (
     <div className="retrieval-view-container">
@@ -279,8 +304,9 @@ export const RetrievalView: React.FC<RetrievalViewProps> = ({
       {results.length > 0 && query && (
         <GroundedAnswerPanel
           query={query}
-          chunks={chunks}
+          chunks={candidateChunksForLLM}
           blocksMap={blocksMap}
+          sourceUrl={sourceUrl}
         />
       )}
 
