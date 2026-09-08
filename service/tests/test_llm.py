@@ -9,9 +9,11 @@ from service.main import app
 from service.models import ChunkModel
 from service.llm.citations import extract_and_validate_citations
 from service.llm.prompts import format_context_for_prompt, build_user_prompt, SYSTEM_INSTRUCTION
+from service.llm.gemini import GeminiProvider, StreamingJsonAnswerExtractor
 from service.llm.groq import GroqProvider
 from service.llm.mock_provider import MockLLMProvider
 from service.llm import get_llm_provider
+
 
 client = TestClient(app)
 
@@ -208,3 +210,86 @@ def test_streaming_endpoint():
             assert done_event is not None
             assert "answer" in done_event
             assert "chk_001" in done_event.get("citations", [])
+
+def test_streaming_json_answer_extractor():
+    extractor = StreamingJsonAnswerExtractor()
+    stream_chunks = [
+        "{\n",
+        '  "answer": "DocuStratum Studio',
+        ' generates embeddings locally [chk_001].",\n',
+        '  "cited_chunk_ids": ["chk_001"],\n',
+        '  "insufficient_evidence": false\n}',
+    ]
+    tokens = [extractor.feed(c) for c in stream_chunks]
+    full_extracted = "".join(tokens)
+    assert full_extracted == "DocuStratum Studio generates embeddings locally [chk_001]."
+
+@pytest.mark.asyncio
+async def test_gemini_provider_status_and_masking():
+    # Unconfigured
+    with patch.dict(os.environ, {"GEMINI_API_KEY": ""}):
+        unconf = GeminiProvider(api_key=None)
+        status_unconf = await unconf.get_status()
+        assert status_unconf.status == "unconfigured"
+        assert status_unconf.provider == "gemini"
+        assert status_unconf.hasApiKey is False
+        assert status_unconf.isAvailable is False
+
+    # Configured
+    conf = GeminiProvider(api_key="secret_test_key_123")
+    status_conf = await conf.get_status()
+    assert status_conf.status == "configured"
+    assert status_conf.provider == "gemini"
+    assert status_conf.hasApiKey is True
+    assert status_conf.isAvailable is True
+    assert "secret_test_key" not in str(status_conf.model_dump())
+
+@pytest.mark.asyncio
+async def test_gemini_provider_mocked_generate_answer():
+    chunks = [ChunkModel(**make_test_chunk("chk_001", "Access tokens expire after 3600 seconds.", "blk_1"))]
+    mock_payload = {
+        "candidates": [
+            {
+                "content": {
+                    "parts": [
+                        {
+                            "text": json.dumps({
+                                "answer": "Access tokens expire in 3600s [chk_001].",
+                                "cited_chunk_ids": ["chk_001"],
+                                "insufficient_evidence": False,
+                            })
+                        }
+                    ]
+                }
+            }
+        ]
+    }
+
+    with patch("httpx.AsyncClient.post") as mock_post:
+        mock_resp = AsyncMock()
+        mock_resp.status_code = 200
+        mock_resp.json = lambda: mock_payload
+        mock_post.return_value = mock_resp
+
+        provider = GeminiProvider(api_key="test_gemini_key")
+        result = await provider.generate_answer("How long do tokens last?", chunks)
+        assert result.provider == "gemini"
+        assert result.model == "gemini-3.5-flash-lite"
+        assert "chk_001" in result.citations
+        assert result.insufficientEvidence is False
+
+@pytest.mark.asyncio
+async def test_gemini_provider_error_handling():
+    chunks = [ChunkModel(**make_test_chunk("chk_001", "Sample", "blk_1"))]
+
+    # 401 Unauthorized
+    with patch("httpx.AsyncClient.post") as mock_post:
+        mock_resp = AsyncMock()
+        mock_resp.status_code = 401
+        mock_post.return_value = mock_resp
+
+        provider = GeminiProvider(api_key="bad_key")
+        with pytest.raises(RuntimeError) as exc:
+            await provider.generate_answer("query", chunks)
+        assert "unauthorized" in str(exc.value).lower() or "invalid" in str(exc.value).lower()
+

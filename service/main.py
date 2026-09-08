@@ -42,6 +42,10 @@ from service.llm import get_llm_provider
 from service.packager import PackageExporter, validate_package_zip
 from service.limits import MAX_REQUEST_BYTES
 from service.auth import verify_bearer_token, get_allowed_extension_ids
+from service.env import load_env
+
+load_env()
+
 
 
 logger = logging.getLogger("webrag.service")

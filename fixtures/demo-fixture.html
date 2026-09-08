@@ -2,20 +2,20 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>WebRAG Studio - Demo Documentation Fixture</title>
+  <title>DocuStratum Studio - Demo Documentation Fixture</title>
   <style>
-    body { font-family: sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; line-height: 1.6; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; line-height: 1.6; color: #1e293b; }
     .callout { background: #fffbe6; border-left: 4px solid #ffe58f; padding: 12px 16px; margin: 16px 0; border-radius: 4px; }
-    pre { background: #f5f5f5; padding: 12px; border-radius: 4px; overflow-x: auto; }
+    pre { background: #0f172a; color: #f8fafc; padding: 14px; border-radius: 6px; overflow-x: auto; font-family: monospace; }
     table { width: 100%; border-collapse: collapse; margin: 16px 0; }
-    th, td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; }
-    th { background-color: #fafafa; }
+    th, td { border: 1px solid #cbd5e1; padding: 10px 12px; text-align: left; }
+    th { background-color: #f1f5f9; font-weight: 600; }
   </style>
 </head>
 <body>
   <main id="main-content">
     <h1>Authentication API Reference</h1>
-    <p>Welcome to the WebRAG Studio authentication docs. This reference explains how to issue, refresh, and revoke bearer tokens for API requests.</p>
+    <p>Welcome to the DocuStratum Studio authentication docs. This reference explains how to issue, refresh, and revoke bearer tokens for API requests.</p>
     
     <div class="callout warning">
       <strong>Important:</strong> Never expose client secrets or API keys in frontend code or public repositories. Store secrets securely on your backend service.
@@ -24,7 +24,7 @@
     <h2>Token Generation</h2>
     <p>To acquire an access token, send a <code>POST</code> request to the <code>/oauth/token</code> endpoint with valid client credentials.</p>
     
-    <pre><code class="language-bash">curl -X POST https://api.webrag.local/v1/oauth/token \
+    <pre><code class="language-bash">curl -X POST https://api.docustratum.local/v1/oauth/token \
   -H "Content-Type: application/json" \
   -d '{"client_id": "demo_app", "grant_type": "client_credentials"}'</code></pre>
 
