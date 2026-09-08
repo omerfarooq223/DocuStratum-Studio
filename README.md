@@ -28,6 +28,22 @@ Traditional web scrapers flatten DOM hierarchy, discard structural context, inge
 5. **Grounded Generation & 1-Click DOM Jump**: Optional Groq Llama 3.3 70B integration streams answers with verified citation badges. Clicking any citation instantly scrolls to and highlights the exact live DOM source node.
 6. **Self-Contained Portable Packages**: Export auditable `.zip` packages containing Markdown, JSONL blocks, chunk mappings, evaluation records, and a zero-dependency Python loader.
 
+## Product Walkthrough
+
+<div align="center">
+
+| **1. One-Click Live DOM Capture & Safety** | **2. Full Tab Studio & Block Tree Review** |
+| :---: | :---: |
+| <img src="docs/assets/screenshot-1-dom-capture.png" width="100%" alt="One-Click Live DOM Capture" /> | <img src="docs/assets/screenshot-2-block-tree.png" width="100%" alt="Full Tab Studio & Block Tree" /> |
+| *Deterministic block extraction stripping out sensitive forms* | *Interactive inclusion toggles and structural block tree* |
+
+| **3. Recursive vs. Heading-Aware Chunking** | **4. Retrieval Debugger & RAG Triad** |
+| :---: | :---: |
+| <img src="docs/assets/screenshot-3-compare-chunks.png" width="100%" alt="Chunk Strategy Comparison" /> | <img src="docs/assets/screenshot-4-rag-debugger.png" width="100%" alt="Retrieval Debugger & RAG Triad" /> |
+| *Side-by-side chunk metrics, token counts, and histograms* | *Hit@K, MRR, and TruLens/RAGAS Triad evaluation meters* |
+
+</div>
+
 ---
 
 ## Architecture
